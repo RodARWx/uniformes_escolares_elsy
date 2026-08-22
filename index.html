@@ -1168,10 +1168,10 @@
             const penaltyRow = document.getElementById('penalty-row');
             if (penalty > 0) {
                 penaltyRow.style.display = 'flex';
-                if (isCalentadorSuelto) {
-                    penaltyRow.textContent = 'Recargo por Calentador suelto (sin uniforme completo): +$2.00';
-                } else {
+                if (isBrokenCombo) {
                     penaltyRow.textContent = 'Recargo (Uniforme roto / Incompleto): +$2.00';
+                } else if (isCalentadorSuelto) {
+                    penaltyRow.textContent = 'Recargo por Calentador suelto (sin uniforme completo): +$2.00';
                 }
             } else {
                 penaltyRow.style.display = 'none';
