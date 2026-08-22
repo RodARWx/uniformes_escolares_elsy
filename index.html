@@ -1,0 +1,1398 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modas Elsy - Aplicación de Cotización</title>
+    <!-- Firebase SDK (v8 compat for global access) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&display=swap');
+
+        :root {
+            --bg-color: #f3f6f9;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --accent-color: #f97316; 
+            --accent-hover: #ea580c;
+            --accent-gradient: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            --border-radius: 16px;
+            --border-color: #e2e8f0;
+            --success: #10b981;
+            --success-light: #d1fae5;
+            --danger: #ef4444;
+            --danger-light: #fee2e2;
+            --shadow-sm: 0 2px 4px rgba(0,0,0,0.02);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.05);
+            --shadow-lg: 0 12px 24px rgba(0,0,0,0.08);
+            --shadow-hover: 0 20px 30px rgba(249, 115, 22, 0.15);
+        }
+
+        body {
+            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            background-image: radial-gradient(circle at 100% 0%, #fff0e6 0%, transparent 20%), 
+                              radial-gradient(circle at 0% 100%, #e6f0ff 0%, transparent 20%);
+            background-attachment: fixed;
+            color: var(--text-main);
+            margin: 0;
+            padding: 30px 20px;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* VISTAS */
+        #menu-view, #detail-view, #caja-view { display: none; opacity: 0; transition: opacity 0.4s ease; }
+        #menu-view.active, #detail-view.active, #caja-view.active { display: block; opacity: 1; animation: fadeIn 0.5s ease; }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* CABECERA MENU */
+        .header-container { text-align: center; margin-bottom: 50px; }
+        h1 { 
+            font-size: 42px; 
+            font-weight: 900; 
+            margin: 0; 
+            text-transform: uppercase; 
+            letter-spacing: -1px;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            drop-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .subtitle { color: var(--text-muted); font-size: 18px; margin-top: 10px; font-weight: 400; }
+
+        /* GRID MENU */
+        .menu-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 25px;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+        .menu-card {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.5);
+            width: 100%;
+            height: 260px;
+            border-radius: var(--border-radius);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 25px;
+            box-shadow: var(--shadow-md);
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            cursor: pointer;
+            box-sizing: border-box;
+        }
+        .menu-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: var(--shadow-hover);
+            border-color: rgba(249, 115, 22, 0.3);
+            background: #ffffff;
+        }
+        .menu-card img {
+            max-width: 110px;
+            max-height: 110px;
+            object-fit: contain;
+            margin-bottom: 20px;
+            transition: transform 0.3s ease;
+        }
+        .menu-card:hover img { transform: scale(1.05); }
+        .menu-card h3 { 
+            margin: 0; 
+            font-size: 18px; 
+            font-weight: 600; 
+            text-align: center;
+            color: var(--text-main);
+        }
+        .icon-lg { font-size: 65px; margin-bottom: 20px; transition: transform 0.3s ease; }
+        .menu-card:hover .icon-lg { transform: scale(1.1) rotate(5deg); }
+
+        /* VISTA DETALLE & CAJA */
+        .top-bar {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+            max-width: 1100px;
+            margin-left: auto;
+            margin-right: auto;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 15px 25px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-md);
+            border: 1px solid rgba(255,255,255,0.8);
+        }
+        .btn-back {
+            background-color: #f1f5f9;
+            color: var(--text-main);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-right: 25px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-back:hover { 
+            background-color: #e2e8f0; 
+            transform: translateX(-3px);
+        }
+        .inst-info { display: flex; align-items: center; gap: 20px; }
+        .inst-info img { height: 60px; object-fit: contain; }
+        .inst-info h2 { margin: 0; font-size: 24px; font-weight: 800; color: var(--text-main); }
+
+        /* FILTROS Y CONTROLES CAJA */
+        .filters-container, .caja-form-container {
+            max-width: 1100px;
+            margin: 0 auto 25px auto;
+            background: white;
+            padding: 25px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-md);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 25px;
+            align-items: flex-end;
+            border: 1px solid var(--border-color);
+        }
+        .filter-group { display: flex; flex-direction: column; gap: 10px; }
+        .filter-group label { 
+            font-size: 13px; 
+            font-weight: 800; 
+            color: var(--text-muted); 
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .toggle-group { 
+            display: flex; 
+            background: #f1f5f9; 
+            border-radius: 10px; 
+            overflow: hidden; 
+            padding: 4px;
+        }
+        .toggle-btn {
+            background: transparent; 
+            border: none; 
+            padding: 10px 24px; 
+            cursor: pointer;
+            font-weight: 600; 
+            color: var(--text-muted); 
+            transition: all 0.3s ease;
+            border-radius: 8px;
+        }
+        .toggle-btn.active { 
+            background: white; 
+            color: var(--accent-color); 
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-action {
+            background: var(--accent-gradient);
+            color: white;
+            border: none;
+            padding: 14px 24px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(249, 115, 22, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .btn-action:hover { 
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(249, 115, 22, 0.4); 
+        }
+        .btn-action:active { transform: translateY(0); }
+        
+        .btn-success { 
+            background: linear-gradient(135deg, #10b981, #059669); 
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+        .btn-success:hover { box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4); }
+
+        .btn-outline {
+            background: white;
+            color: var(--accent-color);
+            border: 2px solid var(--accent-color);
+            box-shadow: none;
+        }
+        .btn-outline:hover {
+            background: #fff7ed;
+            box-shadow: 0 4px 15px rgba(249, 115, 22, 0.15);
+        }
+
+        input, select {
+            padding: 12px 16px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            background: #f8fafc;
+            font-size: 15px;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 500;
+            min-width: 180px;
+            outline: none;
+            box-sizing: border-box;
+            transition: all 0.2s;
+            color: var(--text-main);
+        }
+        input:focus, select:focus { 
+            border-color: var(--accent-color);
+            background: white;
+            box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+        }
+
+        /* TABLA */
+        .table-container {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+            padding: 30px;
+            margin-bottom: 30px;
+            border: 1px solid var(--border-color);
+        }
+        table { width: 100%; border-collapse: separate; border-spacing: 0; }
+        th { 
+            background: #f8fafc; 
+            text-align: left; 
+            padding: 16px 12px; 
+            font-size: 13px; 
+            font-weight: 800;
+            color: var(--text-muted); 
+            text-transform: uppercase; 
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid var(--border-color); 
+        }
+        td { 
+            padding: 16px 12px; 
+            border-bottom: 1px solid #f1f5f9; 
+            vertical-align: middle; 
+            font-size: 15px;
+            transition: background 0.2s;
+        }
+        tr.item-row:hover td { background: #f8fafc; }
+        
+        .col-prenda { font-weight: 600; color: var(--text-main); }
+        .col-precio { font-weight: 800; color: var(--accent-color); font-size: 17px; width: 110px; text-align: right; }
+        .col-check { width: 60px; text-align: center; }
+        
+        .row-opcional td { background-color: #fafaf9; }
+        
+        /* Custom Checkbox */
+        input[type="checkbox"] { 
+            width: 22px; 
+            height: 22px; 
+            cursor: pointer; 
+            accent-color: var(--accent-color);
+            border-radius: 6px;
+        }
+        input[type="checkbox"]:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .penalty-row {
+            display: none;
+            justify-content: flex-end;
+            margin-top: 20px;
+            padding-right: 12px;
+            font-size: 15px;
+            color: var(--danger);
+            font-weight: 700;
+            background: var(--danger-light);
+            padding: 12px;
+            border-radius: 8px;
+            align-items: center;
+        }
+
+        .total-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 25px;
+            padding-top: 25px;
+            border-top: 2px dashed var(--border-color);
+        }
+        .total-text { font-size: 20px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; }
+        .total-amount { 
+            font-size: 36px; 
+            font-weight: 900; 
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* CAJA STYLES */
+        .caja-header-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1100px;
+            margin: 0 auto 25px auto;
+        }
+        .caja-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 25px;
+            max-width: 1100px;
+            margin: 0 auto 30px auto;
+        }
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-md);
+            text-align: center;
+            border: 1px solid var(--border-color);
+            transition: transform 0.3s;
+        }
+        .stat-card:hover { transform: translateY(-5px); }
+        .stat-card h4 { 
+            margin: 0 0 15px 0; 
+            color: var(--text-muted); 
+            text-transform: uppercase; 
+            font-size: 13px; 
+            font-weight: 800;
+            letter-spacing: 0.5px;
+        }
+        .stat-card .val { font-size: 28px; font-weight: 900; }
+        
+        .val.ingreso { color: var(--success); }
+        .val.egreso { color: var(--danger); }
+        
+        .stat-card.total-saldo-card {
+            background: var(--accent-gradient);
+            border: none;
+            color: white;
+        }
+        .stat-card.total-saldo-card h4 { color: rgba(255,255,255,0.9); }
+        .stat-card.total-saldo-card .val { color: white; }
+        .stat-card.total-saldo-card .val.negativo { color: #fecdd3; }
+        
+        .btn-delete {
+            background: var(--danger-light);
+            color: var(--danger);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 700;
+            transition: all 0.2s;
+        }
+        .btn-delete:hover { background: var(--danger); color: white; }
+        
+        .text-ingreso { color: var(--success); font-weight: 700; background: var(--success-light); padding: 4px 10px; border-radius: 20px; font-size: 12px; text-transform: uppercase;}
+        .text-egreso { color: var(--danger); font-weight: 700; background: var(--danger-light); padding: 4px 10px; border-radius: 20px; font-size: 12px; text-transform: uppercase;}
+        .badge { background: #f1f5f9; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; color: var(--text-muted); }
+
+        /* CONTENEDOR DE TABLA RESPONSIVE */
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            border-radius: 8px;
+        }
+
+        @media (max-width: 768px) {
+            body { padding: 15px 10px; }
+            h1 { font-size: 28px; }
+            .header-container { margin-bottom: 30px; }
+            
+            .top-bar {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 15px;
+                padding: 15px;
+            }
+            .inst-info { justify-content: center; }
+            .inst-info h2 { font-size: 20px; margin-left: 0 !important; }
+            .btn-back { margin-right: 0; width: 100%; justify-content: center; padding: 14px; }
+            
+            .filters-container, .caja-form-container { 
+                flex-direction: column; 
+                align-items: stretch; 
+                padding: 20px;
+                gap: 20px;
+            }
+            
+            .filter-group { margin-left: 0 !important; }
+            .filter-group input, .filter-group select { width: 100%; }
+            
+            .toggle-group { flex-direction: column; padding: 0; background: transparent; gap: 8px; }
+            .toggle-btn { background: #f1f5f9; text-align: center; border-radius: 10px; width: 100%; }
+            
+            .btn-action { width: 100%; margin-top: 5px; }
+
+            /* =============================================
+               COTIZADOR: TARJETAS EN MOVIL
+               ============================================= */
+            .table-container { 
+                padding: 12px; 
+                border-radius: 14px;
+                background: var(--bg-color);
+                box-shadow: none;
+                border: none;
+            }
+            .table-responsive { overflow: visible; }
+            
+            /* Ocultar encabezados de tabla */
+            #detail-view table,
+            #detail-view thead,
+            #detail-view tbody,
+            #detail-view th,
+            #detail-view td,
+            #detail-view tr { display: block; }
+            #detail-view thead tr { 
+                position: absolute; 
+                top: -9999px; 
+                left: -9999px; 
+            }
+
+            /* Cada fila = una tarjeta */
+            #table-body tr.item-row {
+                background: white;
+                border: 1px solid var(--border-color);
+                border-radius: 14px;
+                margin-bottom: 12px;
+                padding: 16px 18px;
+                box-shadow: var(--shadow-sm);
+                display: grid;
+                grid-template-columns: auto 1fr;
+                grid-template-rows: auto auto;
+                grid-template-areas: 
+                    "check prenda"
+                    "talla precio";
+                gap: 12px 14px;
+                align-items: center;
+                transition: box-shadow 0.2s;
+            }
+            #table-body tr.item-row:active {
+                box-shadow: var(--shadow-md);
+            }
+
+            /* Fila separadora "PRENDAS OPCIONALES" */
+            #table-body tr:not(.item-row) {
+                display: block;
+                margin: 20px 0 10px 0;
+            }
+            #table-body tr:not(.item-row) td {
+                background: transparent !important;
+                border: none;
+                padding: 0 !important;
+                font-size: 11px !important;
+                font-weight: 800 !important;
+                color: var(--text-muted) !important;
+                letter-spacing: 1px;
+                text-transform: uppercase;
+                text-align: center;
+            }
+
+            /* Grid areas para cada celda */
+            #table-body td.col-check { 
+                grid-area: check; 
+                padding: 0;
+                border: none;
+                width: auto;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            #table-body td.col-prenda { 
+                grid-area: prenda; 
+                padding: 0;
+                border: none;
+                font-size: 15px; 
+                font-weight: 700;
+                color: var(--text-main);
+                line-height: 1.3;
+            }
+            #table-body td:nth-child(3) { 
+                grid-area: talla; 
+                padding: 0;
+                border: none;
+            }
+            #table-body td:nth-child(3) select { 
+                width: 100%; 
+                padding: 10px 12px; 
+                font-size: 14px;
+                min-width: 0;
+                border-radius: 10px;
+                background: #f8fafc;
+            }
+            #table-body td.col-precio { 
+                grid-area: precio; 
+                padding: 0;
+                border: none;
+                text-align: right; 
+                font-size: 20px; 
+                font-weight: 900;
+                color: var(--accent-color);
+                display: flex;
+                align-items: center;
+                justify-content: flex-end;
+            }
+
+            /* Checkbox */
+            input[type="checkbox"] { 
+                width: 24px; 
+                height: 24px; 
+                margin: 0;
+                border-radius: 8px;
+            }
+
+            /* Filas opcionales */
+            #table-body tr.row-opcional {
+                border-left: 3px solid var(--border-color);
+                background: #fefefe;
+            }
+
+            /* =============================================
+               CAJA: TARJETAS EN MOVIL
+               ============================================= */
+            #caja-view .table-container {
+                padding: 0;
+                background: transparent;
+                box-shadow: none;
+                border: none;
+            }
+            #caja-view .table-responsive { overflow: visible; }
+
+            #caja-view table,
+            #caja-view thead,
+            #caja-view tbody,
+            #caja-view th,
+            #caja-view td,
+            #caja-view tr { display: block; }
+            #caja-view thead tr { 
+                position: absolute; 
+                top: -9999px; 
+                left: -9999px; 
+            }
+
+            #caja-table-body tr {
+                background: white;
+                border: 1px solid var(--border-color);
+                border-radius: 14px;
+                margin-bottom: 12px;
+                padding: 18px;
+                box-shadow: var(--shadow-sm);
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+            #caja-table-body td {
+                padding: 0;
+                border: none;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                font-size: 14px;
+                line-height: 1.4;
+            }
+            /* Etiquetas para cada campo */
+            #caja-table-body td::before {
+                font-weight: 800;
+                color: var(--text-muted);
+                font-size: 11px;
+                letter-spacing: 0.3px;
+                text-transform: uppercase;
+                flex-shrink: 0;
+                margin-right: 10px;
+            }
+            #caja-table-body td:nth-child(1)::before { content: "Fecha"; }
+            #caja-table-body td:nth-child(2)::before { content: "Tipo"; }
+            #caja-table-body td:nth-child(3)::before { content: "Pago"; }
+            #caja-table-body td:nth-child(4)::before { content: "Detalle"; }
+            #caja-table-body td:nth-child(4) { 
+                font-weight: 600; 
+                color: var(--text-main);
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 2px;
+            }
+            #caja-table-body td:nth-child(5)::before { content: "Monto"; }
+            #caja-table-body td:nth-child(5) { 
+                font-size: 20px; 
+                font-weight: 900;
+                padding-top: 10px;
+                margin-top: 4px;
+                border-top: 1px dashed var(--border-color);
+            }
+            #caja-table-body td:nth-child(6) { 
+                padding-top: 8px;
+            }
+            #caja-table-body td:nth-child(6)::before { display: none; }
+            
+            .btn-delete { 
+                padding: 10px 20px; 
+                font-size: 13px; 
+                width: 100%; 
+                box-sizing: border-box;
+                border-radius: 10px;
+                text-align: center;
+            }
+            .badge { font-size: 12px; padding: 4px 10px; }
+            .text-ingreso { font-size: 12px; padding: 4px 10px; }
+            .text-egreso { font-size: 12px; padding: 4px 10px; }
+
+            /* =============================================
+               GENERAL MOVIL
+               ============================================= */
+            .total-bar { flex-direction: column; gap: 5px; align-items: flex-end; text-align: right; }
+            .total-text { font-size: 16px; }
+            .total-amount { font-size: 28px; }
+            
+            .caja-stats { grid-template-columns: 1fr 1fr; gap: 12px; }
+            .stat-card { padding: 18px 12px; }
+            .stat-card .val { font-size: 22px; }
+            .stat-card h4 { font-size: 11px; margin-bottom: 10px; }
+            .caja-header-actions { flex-direction: column; align-items: stretch; gap: 15px; text-align: center; }
+            
+            .menu-container {
+                grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+                gap: 15px;
+            }
+            .menu-card { height: 220px; padding: 15px; }
+            .menu-card h3 { font-size: 15px; }
+            .icon-lg { font-size: 50px; }
+            .menu-card img { max-width: 80px; max-height: 80px; }
+
+            .penalty-row { font-size: 13px; padding: 10px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- VISTA 1: MENU PRINCIPAL -->
+    <div id="menu-view" class="active">
+        <div class="header-container">
+            <h1>MODAS ELSY</h1>
+            <p class="subtitle">Catálogo Digital y Cotizador de Uniformes</p>
+        </div>
+        <div class="menu-container" id="menu-grid">
+            <!-- Renderizado por JS -->
+        </div>
+    </div>
+
+    <!-- VISTA 2: DETALLE INSTITUCION -->
+    <div id="detail-view">
+        <div class="top-bar">
+            <button class="btn-back" onclick="showMenu()">&#8592; Volver</button>
+            <div class="inst-info">
+                <img id="inst-logo" src="" alt="">
+                <h2 id="inst-name">Nombre</h2>
+            </div>
+        </div>
+
+        <div class="filters-container">
+            <div class="filter-group" id="group-level" style="display:none;">
+                <label>Nivel Educativo</label>
+                <div class="toggle-group" id="toggle-levels"></div>
+            </div>
+
+            <div class="filter-group">
+                <label>Género</label>
+                <div class="toggle-group" id="toggle-genders"></div>
+            </div>
+
+            <div class="filter-group">
+                <label>Talla Uniforme Completo</label>
+                <select id="global-size" onchange="changeGlobalSize()"></select>
+            </div>
+            
+            <div class="filter-group" style="margin-left: auto; gap: 8px;">
+                <button class="btn-action" onclick="selectFullUniform()">✅ Seleccionar Todo</button>
+                <button class="btn-action btn-outline" onclick="deselectAll()">✖ Desmarcar Todo</button>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="col-check">Inc.</th>
+                            <th>Prenda</th>
+                            <th class="col-talla">Talla</th>
+                            <th style="text-align:right;">Precio Base</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body"></tbody>
+                </table>
+            </div>
+            
+            <div id="penalty-row" class="penalty-row">
+                <!-- Se inyecta por JS -->
+            </div>
+            
+            <div class="total-bar">
+                <div class="total-text">Total Cotización:</div>
+                <div class="total-amount" id="total-price">$0.00</div>
+            </div>
+
+            <div id="sale-actions" style="display: none; margin-top: 25px; padding-top: 20px; border-top: 1px dashed var(--border-color); flex-direction: column; gap: 15px; align-items: flex-end;">
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; width: 100%;">
+                    <select id="sale-payment-method" style="min-width: 150px; font-weight: 700;">
+                        <option value="Efectivo">💵 Efectivo</option>
+                        <option value="Transferencia">📱 Transferencia</option>
+                    </select>
+                    <button class="btn-action btn-success" onclick="registerSale()">💰 Registrar Venta</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- VISTA 3: CAJA -->
+    <div id="caja-view">
+        <div class="top-bar">
+            <button class="btn-back" onclick="showMenu()">&#8592; Volver</button>
+            <div class="inst-info">
+                <h2 style="margin-left:10px;">Caja y Movimientos</h2>
+            </div>
+        </div>
+
+        <div class="caja-header-actions">
+            <div>
+                <p style="margin:0; color:var(--text-muted); font-size:14px;">Tus registros se guardan automáticamente en este navegador.</p>
+            </div>
+            <button class="btn-action btn-success" onclick="abrirCaja()">💰 Abrir Caja (Fondo Inicial)</button>
+        </div>
+
+        <div class="caja-stats">
+            <div class="stat-card">
+                <h4>Ingresos Efectivo</h4>
+                <div class="val ingreso" id="stat-efectivo">$0.00</div>
+            </div>
+            <div class="stat-card">
+                <h4>Ingresos Transfer.</h4>
+                <div class="val ingreso" id="stat-transferencia">$0.00</div>
+            </div>
+            <div class="stat-card">
+                <h4>Total Egresos</h4>
+                <div class="val egreso" id="stat-egresos">$0.00</div>
+            </div>
+            <div class="stat-card total-saldo-card">
+                <h4>Saldo Total</h4>
+                <div class="val" id="stat-saldo">$0.00</div>
+            </div>
+        </div>
+
+        <div class="caja-form-container">
+            <div class="filter-group">
+                <label>Tipo de Movimiento</label>
+                <select id="caja-type" onchange="togglePaymentMethod()">
+                    <option value="ingreso">Ingreso (+)</option>
+                    <option value="egreso">Egreso (-)</option>
+                </select>
+            </div>
+            <div class="filter-group" id="group-payment">
+                <label>Forma de Pago</label>
+                <select id="caja-payment">
+                    <option value="Efectivo">Efectivo</option>
+                    <option value="Transferencia">Transferencia</option>
+                </select>
+            </div>
+            <div class="filter-group" style="flex:2;">
+                <label>Detalle / Concepto</label>
+                <input type="text" id="caja-detail" placeholder="Ej: Venta Uniforme Colegio 24 de Mayo">
+            </div>
+            <div class="filter-group">
+                <label>Monto ($)</label>
+                <input type="number" id="caja-amount" placeholder="0.00" step="0.01" min="0.01">
+            </div>
+            <div class="filter-group">
+                <label>Fecha y Hora</label>
+                <input type="datetime-local" id="caja-datetime">
+            </div>
+            <div class="filter-group" style="margin-left:auto;">
+                <button class="btn-action" onclick="addTransaction()">Registrar Movimiento</button>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Fecha y Hora</th>
+                            <th>Tipo</th>
+                            <th>Forma de Pago</th>
+                            <th>Detalle</th>
+                            <th style="text-align:right;">Monto</th>
+                            <th style="text-align:center; width:80px;">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="caja-table-body">
+                        <!-- Transactions go here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const db = {"24_mayo": {"name": "Unidad Educativa 24 de Mayo", "logo": "escudos/24 de Mayo.jfif", "has_levels": true, "levels": ["Escuela", "Colegio"], "genders": ["Mujer", "Hombre"], "tables": {"Escuela_Mujer": {"sizes": ["4 (28)", "6(30)", "8(32)", "10(34)", "12(36)"], "items": {"FALDA": [10, 10, 12, 14, 15], "SACO": [15, 16, 16, 17, 18], "BLUSA": [10, 10, 12, 13, 14], "MANDIL": [9, 10, 10, 11, 12], "CALENTADOR EXTERIOR": [20, 22, 24, 26, 28], "CAMISETA": [6, 6, 6, 7, 8], "SHORT": [6, 6, 6, 6, 6], "ESCARAPELA": [3, 3, 3, 3, 3]}, "opcionales": {"CHOMPA IMPERMEABLE": [20, 20, 22, 24, 25], "GORRA": [5, 5, 5, 5, 5], "MALLAS": [5, 5, 5, 7, 7], "MEDIAS PARADA": [3, 3, 3, 3, 3]}}, "Colegio_Mujer": {"sizes": ["10(34)", "12(36)", "14(38)", "16(40)", "18(42)"], "items": {"FALDA": [14, 15, 16, 17, 18], "SACO": [17, 18, 19, 20, 21], "BLUSA": [13, 14, 15, 16, 17], "BLUSA CUELLO CAMISA": [14, 15, 16, 17, 17], "CAPA": [32, 32, 32, 32, 32], "CALENTADOR EXTERIOR": [26, 28, 30, 32, 34], "CAMISETA": [7, 8, 8, 9, 9], "LICRA": [9, 9, 9, 10, 10], "ESCARAPELA": [3, 3, 3, 3, 3]}, "opcionales": {"CHOMPA IMPERMEABLE": [20, 20, 22, 24, 25], "GORRA": [5, 5, 5, 5, 5], "MALLAS": [5, 5, 5, 7, 7], "MEDIAS PARADA": [3, 3, 3, 3, 3]}}, "Escuela_Hombre": {"sizes": ["4 (28)", "6(30)", "8(32)", "10(34)", "12(36)"], "items": {"PANTALON CASIMIR": [15, 16, 18, 20, 22], "SACO": [15, 16, 17, 18, 18], "CAMISETA TIPO POLO": [8, 8, 9, 9, 10], "MANDIL": [12, 12, 13, 14, 15], "CALENTADOR EXTERIOR": [24, 26, 28, 28, 30], "CAMISETA": [6, 7, 7, 8, 9], "SHORT": [6, 7, 7, 8, 8], "ESCARAPELA": [3, 3, 3, 3, 3], "MEDIAS EFF": [3, 3, 3, 3, 3]}, "opcionales": {"CHOMPA IMPERMEABLE": [20, 20, 22, 24, 25], "GORRA": [5, 5, 5, 5, 5], "MEDIAS PARADA": [3, 3, 3, 3, 3]}}, "Colegio_Hombre": {"sizes": ["10(34)", "12(36)", "14(38)", "16(40)", "18(42)"], "items": {"PANTALON CASIMIR": [20, 22, 22, 24, 24], "SACO": [16, 17, 18, 18, 20], "LEVA": [50, 50, 50, 50, 50], "CAMISETA TIPO POLO": [9, 10, 11, 12, 12], "CAMISA": [14, 15, 16, 17, 17], "CALENTADOR EXTERIOR": [28, 30, 30, 32, 34], "CAMISETA": [8, 8, 9, 9, 10], "SHORT": [7, 7, 8, 8, 9], "MEDIAS EF": [3, 3, 3, 3, 3], "CORBATA": [3, 3, 3, 3, 3], "ESCARAPELA": [3, 3, 3, 3, 3]}, "opcionales": {"CHOMPA IMPERMEABLE": [20, 20, 22, 24, 25], "GORRA": [5, 5, 5, 5, 5], "MEDIAS PARADA": [3, 3, 3, 3, 3]}}}}, "abraham": {"name": "Abraham Lincoln", "logo": "escudos/Abraham.jpeg", "has_levels": true, "levels": ["Escuela", "Colegio"], "genders": ["Mujer", "Hombre"], "tables": {"Escuela_Mujer": {"sizes": ["4 (28)", "6(30)", "8(32)", "10(34)"], "items": {"VESTIDO": [20, 22, 24, 24], "SACO": [15, 16, 16, 17], "POLO": [6, 7, 7, 8], "MANDIL": [10, 10, 0, 0], "CALENTADOR EXTERIOR": [22, 24, 26, 28], "CAMISETA": [6, 7, 7, 8], "SHORT": [5, 6, 6, 7], "MEDIAS EFF": [2, 2, 2, 2]}, "opcionales": {"CHOMPA IMPERMEABLE": [18, 18, 20, 20], "GORRA": [5, 5, 5, 5], "PROMO 3 MEDIAS GITANA": [7, 7, 7, 7], "PROMO 3 MEDIAS BLANCA EDUCA": [5, 5, 5, 5], "MALLA": [5, 5, 5, 7]}}, "Colegio_Mujer": {"sizes": ["10(34)", "12(36)", "14(38)"], "items": {"VESTIDO": [24, 26, 26], "SACO": [17, 18, 18], "POLO": [8, 8, 9], "CALENTADOR EXTERIOR": [28, 28, 30], "CAMISETA": [8, 9, 10], "SHORT": [7, 7, 8], "MEDIAS EFF": [2, 2, 2]}, "opcionales": {"CHOMPA IMPERMEABLE": [20, 22, 22], "GORRA": [5, 5, 5], "PROMO 3 MEDIAS GITANA": [7, 7, 7], "PROMO 3 MEDIAS BLANCA EDUCA": [5, 5, 5], "MALLA": [7, 7, 7]}}, "Escuela_Hombre": {"sizes": ["4 (28)", "6(30)", "8(32)", "10(34)"], "items": {"JEAN": [13, 14, 15, 16], "SACO": [15, 16, 16, 17], "POLO": [6, 7, 7, 8], "MANDIL": [10, 10, 0, 0], "CALENTADOR EXTERIOR": [22, 24, 26, 28], "CAMISETA": [6, 7, 7, 8], "SHORT": [5, 6, 6, 7], "MEDIAS EFF": [2, 2, 2, 2]}, "opcionales": {"CHOMPA IMPERMEABLE": [18, 18, 20, 20], "GORRA": [5, 5, 5, 5], "PROMO 3 MEDIAS GITANA": [7, 7, 7, 7], "PROMO 3 MEDIAS BLANCA EDUCA": [5, 5, 5, 5], "MALLA": [5, 5, 5, 7]}}, "Colegio_Hombre": {"sizes": ["10(34)", "12(36)", "14(38)"], "items": {"JEAN": [16, 17, 18], "SACO": [17, 18, 18], "POLO": [8, 8, 9], "CALENTADOR EXTERIOR": [28, 28, 30], "CAMISETA": [8, 9, 10], "SHORT": [7, 7, 8], "MEDIAS EFF": [2, 2, 2]}, "opcionales": {"CHOMPA IMPERMEABLE": [20, 22, 22], "GORRA": [5, 5, 5], "PROMO 3 MEDIAS GITANA": [7, 7, 7], "PROMO 3 MEDIAS BLANCA EDUCA": [5, 5, 5], "MALLA": [7, 7, 7]}}}}, "roman": {"name": "Centro de Educaci\u00f3n Inicial Jos\u00e9 Luis Rom\u00e1n", "logo": "escudos/Roman.jfif", "has_levels": false, "levels": ["\u00danico"], "genders": ["Mujer", "Hombre"], "tables": {"\u00danico_Mujer": {"sizes": ["4 (28)", "6(30)", "8(32)"], "items": {"VESTIDO": [12, 12, 12], "SACO": [13, 13, 13], "POLO": [6, 6, 6], "MANDIL": [14, 14, 14]}, "opcionales": {"CHOMPA IMPERMEABLE": [18, 20, 22], "MALLA": [5, 5, 5]}}, "\u00danico_Hombre": {"sizes": ["4 (28)", "6(30)", "8(32)"], "items": {"CASIMIR": [12, 12, 12], "SACO": [13, 13, 13], "POLO": [6, 6, 6], "MANDIL": [14, 14, 14]}, "opcionales": {"CHOMPA IMPERMEABLE": [18, 20, 22], "MALLA": [5, 5, 5]}}}}, "sanchez": {"name": "Escuela de Educaci\u00f3n B\u00e1sica Manuel Mar\u00eda S\u00e1nchez", "logo": "escudos/Manuel.jpeg", "has_levels": false, "levels": ["\u00danico"], "genders": ["Mujer", "Hombre"], "tables": {"\u00danico_Mujer": {"sizes": ["3 (28)", "4(28)", "6(30)"], "items": {"VESTIDO": [14, 14, 15], "SACO": [14, 14, 15], "POLO": [6, 7, 7], "CALENTADOR EXTERIOR": [22, 24, 26], "CAMISETA": [6, 7, 7], "GORRA": [5, 5, 5]}, "opcionales": {"MALLAS": [5, 5, 5], "MEDIAS PLOMAS HOMBRE 3 X $5": [5, 5, 5]}}, "\u00danico_Hombre": {"sizes": ["3 (28)", "4(28)", "6(30)"], "items": {"CASIMIR": [13, 13, 14], "SACO": [14, 14, 15], "POLO": [6, 7, 7], "CALENTADOR EXTERIOR": [22, 24, 26], "CAMISETA": [6, 7, 7], "GORRA": [5, 5, 5]}, "opcionales": {"MALLAS": [5, 5, 5], "MEDIAS PLOMAS HOMBRE 3 X $5": [5, 5, 5]}}}}, "holguin": {"name": "Unidad Educativa Juan Larrea Holgu\u00edn", "logo": "escudos/Holguin.jfif", "has_levels": true, "levels": ["Escuela", "Colegio"], "genders": ["Mujer", "Hombre"], "tables": {"Escuela_Mujer": {"sizes": ["4 (28)", "6(30)", "8(32)", "10(34)", "12(36)", "14(38)"], "items": {"VESTIDO": [20, 22, 24, 26, 28, 30], "SACO": [15, 15, 16, 17, 18, 18], "CAMISETA TIPO POLO": [7, 8, 8, 9, 10, 11], "MANDIL": [12, 12, 12, 0, 0, 0], "CALENTADOR EXTERIOR": [22, 24, 26, 28, 30, 30], "CAMISETA": [6, 6, 7, 7, 8, 8], "SHORT": [6, 6, 7, 7, 8, 8], "MEDIAS": [3, 3, 3, 3, 3, 3]}, "opcionales": {"MALLAS CON TALON": [5, 5, 5, 7, 7, 7], "CHOMPA IMPERMEABLE": [20, 20, 22, 22, 24, 24]}}, "Escuela_Hombre": {"sizes": ["4 (28)", "6(30)", "8(32)", "10(34)", "12(36)", "14(38)"], "items": {"PANTALON": [15, 15, 18, 20, 22, 22], "SACO": [15, 15, 16, 17, 18, 18], "CAMISETA TIPO POLO": [7, 8, 8, 9, 10, 11], "MANDIL": [12, 12, 12, 0, 0, 0], "CALENTADOR EXTERIOR": [22, 24, 26, 28, 30, 30], "CAMISETA": [7, 7, 8, 8, 9, 9], "SHORT": [5, 6, 7, 7, 8, 8], "MEDIAS": [3, 3, 3, 3, 3, 3]}, "opcionales": {"MALLAS CON TALON": [5, 5, 5, 7, 7, 7], "CHOMPA IMPERMEABLE": [20, 20, 22, 22, 24, 24]}}, "Colegio_Mujer": {"sizes": ["10(34)", "12(36)", "14(38)", "16(40)", "18(42)"], "items": {"FALDA": [18, 18, 19, 20, 20], "SACO": [17, 18, 18, 20, 20], "CHOMPA DE PARADA": [32, 32, 32, 35, 35], "CAMISETA TIPO POLO": [9, 10, 11, 12, 12], "BLUSA": [14, 15, 15, 16, 16], "CALENTADOR EXTERIOR": [28, 30, 30, 32, 34], "CAMISETA": [8, 9, 9, 10, 11], "LICRA": [7, 8, 8, 9, 9], "MEDIAS EF": [3, 3, 3, 3, 3], "CORBATA": [3, 3, 3, 3, 3]}, "opcionales": {"GORRA": [6, 6, 6, 6, 6], "MALLAS": [7, 7, 7, 7, 7]}}, "Colegio_Hombre": {"sizes": ["10(34)", "12(36)", "14(38)", "16(40)", "18(42)"], "items": {"PANTALON": [20, 22, 22, 24, 24], "SACO": [17, 18, 18, 20, 20], "CHOMPA DE PARADA": [32, 32, 32, 35, 35], "CAMISETA TIPO POLO": [9, 10, 11, 12, 12], "CAMISA": [15, 16, 16, 17, 17], "CALENTADOR EXTERIOR": [28, 30, 30, 32, 34], "CAMISETA": [8, 9, 9, 10, 11], "SHORT": [7, 8, 8, 9, 9], "MEDIAS EF": [3, 3, 3, 3, 3], "CORBATA": [3, 3, 3, 3, 3]}, "opcionales": {"GORRA": [6, 6, 6, 6, 6], "MALLAS": [7, 7, 7, 7, 7]}}}}};
+
+        let currentInstId = null;
+        let currentLevel = null;
+        let currentGender = null;
+        let wasFullUniform = false;
+        
+        let cajaData = [];
+
+        // Inicialización de Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBdnfMWrSjBkqTkWoxb0-MGzWEMQBhUUpw",
+            authDomain: "modas-elsy-app.firebaseapp.com",
+            projectId: "modas-elsy-app",
+            storageBucket: "modas-elsy-app.firebasestorage.app",
+            messagingSenderId: "611681386581",
+            appId: "1:611681386581:web:aa2b09c1282e25698c94dc",
+            measurementId: "G-P85QT5YZ6Q"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const firestore = firebase.firestore();
+
+        // Escuchar cambios en la base de datos en tiempo real
+        firestore.collection('caja').orderBy('datetime', 'desc').onSnapshot((snapshot) => {
+            cajaData = [];
+            snapshot.forEach((doc) => {
+                cajaData.push({ id: doc.id, ...doc.data() });
+            });
+            // Si la vista de caja está activa, re-renderizarla
+            if (document.getElementById('caja-view').classList.contains('active')) {
+                renderCajaTable();
+            }
+        });
+
+        function initMenu() {
+            const grid = document.getElementById('menu-grid');
+            grid.innerHTML = '';
+            
+            for (const [id, inst] of Object.entries(db)) {
+                const card = document.createElement('div');
+                card.className = 'menu-card';
+                card.onclick = () => openInstitution(id);
+                card.innerHTML = `
+                    <img src="${inst.logo}" alt="${inst.name}">
+                    <h3>${inst.name}</h3>
+                `;
+                grid.appendChild(card);
+            }
+
+            // Agregar la tarjeta de Caja al final
+            const cajaCard = document.createElement('div');
+            cajaCard.className = 'menu-card';
+            cajaCard.onclick = () => openCaja();
+            cajaCard.innerHTML = `
+                <div class="icon-lg">💵</div>
+                <h3>Caja y Movimientos</h3>
+            `;
+            grid.appendChild(cajaCard);
+        }
+
+        function showMenu() {
+            document.getElementById('detail-view').classList.remove('active');
+            document.getElementById('caja-view').classList.remove('active');
+            document.getElementById('menu-view').classList.add('active');
+        }
+
+        // ============================================
+        // LOGICA DE COTIZADOR
+        // ============================================
+        function openInstitution(id) {
+            currentInstId = id;
+            wasFullUniform = false;
+            const inst = db[id];
+            
+            document.getElementById('inst-name').textContent = inst.name;
+            document.getElementById('inst-logo').src = inst.logo;
+
+            setupFilters(inst);
+
+            document.getElementById('menu-view').classList.remove('active');
+            document.getElementById('detail-view').classList.add('active');
+        }
+
+        function setupFilters(inst) {
+            const groupLevel = document.getElementById('group-level');
+            const toggleLevels = document.getElementById('toggle-levels');
+            toggleLevels.innerHTML = '';
+            
+            if (inst.has_levels) {
+                groupLevel.style.display = 'flex';
+                currentLevel = inst.levels[0];
+                inst.levels.forEach(lvl => {
+                    const btn = document.createElement('button');
+                    btn.className = `toggle-btn ${lvl === currentLevel ? 'active' : ''}`;
+                    btn.textContent = lvl;
+                    btn.onclick = () => { currentLevel = lvl; updateLevelUI(); renderTable(); };
+                    toggleLevels.appendChild(btn);
+                });
+            } else {
+                groupLevel.style.display = 'none';
+                currentLevel = 'Único';
+            }
+
+            const toggleGenders = document.getElementById('toggle-genders');
+            toggleGenders.innerHTML = '';
+            currentGender = inst.genders[0];
+            inst.genders.forEach(gen => {
+                const btn = document.createElement('button');
+                btn.className = `toggle-btn ${gen === currentGender ? 'active' : ''}`;
+                btn.textContent = gen;
+                btn.onclick = () => { currentGender = gen; updateGenderUI(); renderTable(); };
+                toggleGenders.appendChild(btn);
+            });
+
+            renderTable();
+        }
+
+        function updateLevelUI() {
+            const btns = document.getElementById('toggle-levels').children;
+            for(let btn of btns) {
+                btn.classList.toggle('active', btn.textContent === currentLevel);
+            }
+        }
+
+        function updateGenderUI() {
+            const btns = document.getElementById('toggle-genders').children;
+            for(let btn of btns) {
+                btn.classList.toggle('active', btn.textContent === currentGender);
+            }
+        }
+
+        function renderTable() {
+            wasFullUniform = false;
+            const inst = db[currentInstId];
+            const tableKey = `${currentLevel}_${currentGender}`;
+            const tableData = inst.tables[tableKey];
+            const tbody = document.getElementById('table-body');
+            const globalSizeSelect = document.getElementById('global-size');
+            
+            tbody.innerHTML = '';
+            globalSizeSelect.innerHTML = '';
+
+            if (!tableData) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No hay datos para esta selección</td></tr>';
+                calculateTotal();
+                return;
+            }
+
+            tableData.sizes.forEach((size, idx) => {
+                const opt = document.createElement('option');
+                opt.value = idx;
+                opt.textContent = size;
+                globalSizeSelect.appendChild(opt);
+            });
+
+            for (const [prenda, precios] of Object.entries(tableData.items)) {
+                tbody.appendChild(createRow(prenda, precios, tableData.sizes, false));
+            }
+
+            if (tableData.opcionales && Object.keys(tableData.opcionales).length > 0) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td colspan="4" style="background:#f0f0f0; font-weight:bold; font-size:12px; color:#666;">PRENDAS OPCIONALES</td>`;
+                tbody.appendChild(tr);
+
+                for (const [prenda, precios] of Object.entries(tableData.opcionales)) {
+                    tbody.appendChild(createRow(prenda, precios, tableData.sizes, true));
+                }
+            }
+
+            calculateTotal();
+        }
+
+        function createRow(prenda, precios, sizesArray, isOpcional = false) {
+            const tr = document.createElement('tr');
+            tr.className = isOpcional ? 'item-row row-opcional' : 'item-row';
+            tr.dataset.type = isOpcional ? 'opcional' : 'standard';
+            
+            const tdCheck = document.createElement('td');
+            tdCheck.className = 'col-check';
+            const chk = document.createElement('input');
+            chk.type = 'checkbox';
+            chk.checked = false; 
+            chk.onchange = calculateTotal;
+            tdCheck.appendChild(chk);
+
+            const tdPrenda = document.createElement('td');
+            tdPrenda.className = 'col-prenda';
+            tdPrenda.textContent = prenda;
+
+            const tdTalla = document.createElement('td');
+            const selectTalla = document.createElement('select');
+            selectTalla.className = 'item-size-select';
+            
+            sizesArray.forEach((size, idx) => {
+                const opt = document.createElement('option');
+                opt.value = idx;
+                opt.textContent = size;
+                opt.dataset.precio = precios[idx] || 0; 
+                selectTalla.appendChild(opt);
+            });
+            
+            selectTalla.onchange = calculateTotal;
+            tdTalla.appendChild(selectTalla);
+
+            const tdPrecio = document.createElement('td');
+            tdPrecio.className = 'col-precio';
+            
+            tr.appendChild(tdCheck);
+            tr.appendChild(tdPrenda);
+            tr.appendChild(tdTalla);
+            tr.appendChild(tdPrecio);
+
+            return tr;
+        }
+
+        function changeGlobalSize() {
+            const globalIndex = document.getElementById('global-size').value;
+            const selects = document.querySelectorAll('.item-size-select');
+            
+            selects.forEach(select => {
+                if(select.options.length > globalIndex) {
+                    select.value = globalIndex;
+                }
+            });
+            calculateTotal(); 
+        }
+
+        function selectFullUniform() {
+            const allRows = document.querySelectorAll('tr.item-row');
+            allRows.forEach(row => {
+                if(row.dataset.type === 'standard') {
+                    const select = row.querySelector('select');
+                    const selectedOpt = select.options[select.selectedIndex];
+                    const basePrice = parseFloat(selectedOpt.dataset.precio);
+                    if (basePrice > 0) {
+                        row.querySelector('input[type="checkbox"]').checked = true;
+                    }
+                }
+            });
+            wasFullUniform = true;
+            calculateTotal();
+        }
+
+        function deselectAll() {
+            const allRows = document.querySelectorAll('tr.item-row');
+            allRows.forEach(row => {
+                row.querySelector('input[type="checkbox"]').checked = false;
+            });
+            wasFullUniform = false;
+            calculateTotal();
+        }
+
+        function calculateTotal() {
+            let baseTotal = 0;
+            let standardCount = 0;
+            let standardCheckedCount = 0;
+            let missingMajor = false; 
+            let hasCalentador = false;
+
+            const tbody = document.getElementById('table-body');
+            const allRows = tbody.querySelectorAll('tr.item-row');
+
+            allRows.forEach(row => {
+                const select = row.querySelector('select');
+                const checkbox = row.querySelector('input[type="checkbox"]');
+                const tdPrecio = row.querySelector('.col-precio');
+                const prendaNombre = row.querySelector('.col-prenda').textContent.trim().toUpperCase();
+                
+                const basePrice = parseFloat(select.options[select.selectedIndex].dataset.precio);
+
+                if (basePrice === 0) {
+                    tdPrecio.textContent = 'N/A';
+                    checkbox.checked = false;
+                    checkbox.disabled = true;
+                    return;
+                } else {
+                    checkbox.disabled = false;
+                    tdPrecio.textContent = `$${basePrice.toFixed(2)}`;
+                }
+
+                if (row.dataset.type === 'standard') {
+                    standardCount++;
+                    if (checkbox.checked) {
+                        standardCheckedCount++;
+                        baseTotal += basePrice;
+                        if (prendaNombre === 'CALENTADOR EXTERIOR') {
+                            hasCalentador = true;
+                        }
+                    } else {
+                        if (basePrice >= 7) {
+                            missingMajor = true;
+                        }
+                    }
+                } else if (row.dataset.type === 'opcional') {
+                    if (checkbox.checked) {
+                        baseTotal += basePrice;
+                    }
+                }
+            });
+
+            const isFullUniform = (standardCount > 0 && standardCount === standardCheckedCount);
+            
+            if (isFullUniform) {
+                wasFullUniform = true;
+            }
+            if (standardCheckedCount === 0) {
+                wasFullUniform = false;
+            }
+
+            let penalty = 0;
+            // Solo penalizar si falta una prenda de $7 o más (missingMajor = true)
+            const isBrokenCombo = (wasFullUniform && !isFullUniform && standardCheckedCount > 0 && missingMajor);
+            const isCalentadorSuelto = (hasCalentador && missingMajor);
+
+            if (isBrokenCombo || isCalentadorSuelto) {
+                penalty = 2;
+            }
+
+            const penaltyRow = document.getElementById('penalty-row');
+            if (penalty > 0) {
+                penaltyRow.style.display = 'flex';
+                if (isCalentadorSuelto) {
+                    penaltyRow.textContent = 'Recargo por Calentador suelto (sin uniforme completo): +$2.00';
+                } else {
+                    penaltyRow.textContent = 'Recargo (Uniforme roto / Incompleto): +$2.00';
+                }
+            } else {
+                penaltyRow.style.display = 'none';
+            }
+            
+            const finalTotal = baseTotal + penalty;
+            document.getElementById('total-price').textContent = `$${finalTotal.toFixed(2)}`;
+            
+            const saleActions = document.getElementById('sale-actions');
+            if (finalTotal > 0) {
+                saleActions.style.display = 'flex';
+            } else {
+                saleActions.style.display = 'none';
+            }
+        }
+
+        function registerSale() {
+            let finalTotalText = document.getElementById('total-price').textContent;
+            let finalTotal = parseFloat(finalTotalText.replace('$', ''));
+            if (finalTotal <= 0) return;
+
+            const instName = document.getElementById('inst-name').textContent;
+            let detailLines = [`Venta Uniforme: ${instName}`];
+            
+            const allRows = document.querySelectorAll('tr.item-row');
+            allRows.forEach(row => {
+                const checkbox = row.querySelector('input[type="checkbox"]');
+                if (checkbox && checkbox.checked) {
+                    const prenda = row.querySelector('.col-prenda').textContent.trim();
+                    detailLines.push(`- ${prenda}`);
+                }
+            });
+
+            const penaltyRow = document.getElementById('penalty-row');
+            if (penaltyRow.style.display === 'flex') {
+                detailLines.push(`- ${penaltyRow.textContent}`);
+            }
+
+            const paymentMethodSelect = document.getElementById('sale-payment-method');
+            const method = paymentMethodSelect.options[paymentMethodSelect.selectedIndex].value;
+
+            const now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            
+            const transaction = {
+                type: 'ingreso',
+                paymentMethod: method,
+                detail: detailLines.join('\n'),
+                amount: finalTotal,
+                datetime: now.toISOString().slice(0,16)
+            };
+
+            firestore.collection('caja').add(transaction).then(() => {
+                alert(`✅ Venta registrada exitosamente en caja por $${finalTotal.toFixed(2)}`);
+                deselectAll();
+                goBack();
+            }).catch(error => {
+                console.error("Error al registrar venta: ", error);
+                alert("Hubo un error de conexión al registrar la venta.");
+            });
+        }
+
+        // ============================================
+        // LOGICA DE CAJA
+        // ============================================
+        function openCaja() {
+            document.getElementById('menu-view').classList.remove('active');
+            document.getElementById('caja-view').classList.add('active');
+            
+            // Set current datetime automatically
+            const now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            document.getElementById('caja-datetime').value = now.toISOString().slice(0,16);
+
+            renderCajaTable();
+        }
+
+        function abrirCaja() {
+            let monto = prompt("Ingrese el monto con el que inicia la caja hoy ($):");
+            if (monto !== null && monto.trim() !== "") {
+                monto = parseFloat(monto);
+                if (!isNaN(monto) && monto >= 0) {
+                    const now = new Date();
+                    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+                    
+                    const transaction = {
+                        type: 'ingreso',
+                        paymentMethod: 'Efectivo',
+                        detail: 'APERTURA DE CAJA (Fondo Inicial)',
+                        amount: monto,
+                        datetime: now.toISOString().slice(0,16)
+                    };
+                    firestore.collection('caja').add(transaction).catch(error => {
+                        console.error("Error al abrir caja: ", error);
+                        alert("Hubo un error al abrir la caja. Intente nuevamente.");
+                    });
+                } else {
+                    alert("Por favor, ingrese un monto numérico válido.");
+                }
+            }
+        }
+
+        function togglePaymentMethod() {
+            const type = document.getElementById('caja-type').value;
+            const groupPayment = document.getElementById('group-payment');
+            groupPayment.style.display = (type === 'ingreso') ? 'flex' : 'none';
+        }
+
+        function addTransaction() {
+            const type = document.getElementById('caja-type').value;
+            const paymentMethod = (type === 'ingreso') ? document.getElementById('caja-payment').value : 'N/A';
+            const detail = document.getElementById('caja-detail').value.trim();
+            const amount = parseFloat(document.getElementById('caja-amount').value);
+            const datetime = document.getElementById('caja-datetime').value;
+
+            if (!detail || isNaN(amount) || amount <= 0 || !datetime) {
+                alert("Por favor, ingrese un detalle válido, un monto mayor a 0 y la fecha/hora.");
+                return;
+            }
+
+            const transaction = {
+                type: type,
+                paymentMethod: paymentMethod,
+                detail: detail,
+                amount: amount,
+                datetime: datetime
+            };
+
+            firestore.collection('caja').add(transaction).then(() => {
+                // Clear inputs
+                document.getElementById('caja-detail').value = '';
+                document.getElementById('caja-amount').value = '';
+            }).catch(error => {
+                console.error("Error al registrar movimiento: ", error);
+                alert("Hubo un error de conexión al registrar el movimiento.");
+            });
+        }
+
+        function deleteTransaction(id) {
+            if (confirm("¿Estás seguro de eliminar este registro?")) {
+                firestore.collection('caja').doc(id).delete().catch(error => {
+                    console.error("Error al eliminar registro: ", error);
+                    alert("Hubo un error al eliminar el registro.");
+                });
+            }
+        }
+
+        function formatDateTime(isoString) {
+            const date = new Date(isoString);
+            return date.toLocaleString('es-EC', { 
+                day: '2-digit', month: '2-digit', year: 'numeric', 
+                hour: '2-digit', minute:'2-digit' 
+            });
+        }
+
+        function renderCajaTable() {
+            const tbody = document.getElementById('caja-table-body');
+            tbody.innerHTML = '';
+
+            let totalEfectivo = 0;
+            let totalTransferencia = 0;
+            let totalEgresos = 0;
+
+            // Sort by datetime descending (newest first)
+            const sortedData = [...cajaData].sort((a, b) => new Date(b.datetime) - new Date(a.datetime));
+
+            if (sortedData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px;">No hay movimientos registrados.</td></tr>';
+            } else {
+                sortedData.forEach(t => {
+                    if (t.type === 'ingreso') {
+                        if (t.paymentMethod === 'Transferencia') {
+                            totalTransferencia += t.amount;
+                        } else {
+                            totalEfectivo += t.amount; // Handles 'Efectivo', missing, or 'N/A'
+                        }
+                    } else {
+                        totalEgresos += t.amount;
+                    }
+
+                    const tr = document.createElement('tr');
+                    
+                    const isIngreso = t.type === 'ingreso';
+                    const amountText = isIngreso ? `+$${t.amount.toFixed(2)}` : `-$${t.amount.toFixed(2)}`;
+                    const typeClass = isIngreso ? 'text-ingreso' : 'text-egreso';
+                    const typeLabel = isIngreso ? 'Ingreso' : 'Egreso';
+
+                    const methodText = (t.type === 'ingreso' && t.paymentMethod) ? t.paymentMethod : '-';
+                    const methodHtml = methodText !== '-' ? `<span class="badge">${methodText}</span>` : '-';
+                    tr.innerHTML = `
+                        <td>${formatDateTime(t.datetime)}</td>
+                        <td><span class="${typeClass}">${typeLabel}</span></td>
+                        <td>${methodHtml}</td>
+                        <td>${t.detail}</td>
+                        <td style="text-align:right;" class="${typeClass}">${amountText}</td>
+                        <td style="text-align:center;">
+                            <button class="btn-delete" onclick="deleteTransaction('${t.id}')">Borrar</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            // Update stats
+            document.getElementById('stat-efectivo').textContent = `$${totalEfectivo.toFixed(2)}`;
+            document.getElementById('stat-transferencia').textContent = `$${totalTransferencia.toFixed(2)}`;
+            document.getElementById('stat-egresos').textContent = `$${totalEgresos.toFixed(2)}`;
+            
+            const totalIngresos = totalEfectivo + totalTransferencia;
+            const saldo = totalIngresos - totalEgresos;
+            
+            const statSaldo = document.getElementById('stat-saldo');
+            statSaldo.textContent = `$${saldo.toFixed(2)}`;
+            if (saldo < 0) {
+                statSaldo.classList.add('negativo');
+            } else {
+                statSaldo.classList.remove('negativo');
+            }
+        }
+
+        window.onload = initMenu;
+    </script>
+</body>
+</html>
