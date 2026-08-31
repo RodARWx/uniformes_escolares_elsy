@@ -1064,11 +1064,16 @@
             if (doc.exists) {
                 appSettings = doc.data();
             } else {
-                firestore.collection('config').doc('settings').set(appSettings);
+                firestore.collection('config').doc('settings').set(appSettings).catch(e => console.error("Error setting appSettings", e));
             }
             const toggle = document.getElementById('admin-penalty-toggle');
             if (toggle) toggle.checked = appSettings.enablePenalty;
             
+            isSettingsLoaded = true;
+            checkInitReady();
+        }, (error) => {
+            console.error("Firebase Settings Error:", error);
+            alert("Atención: No se pudo conectar a Firebase (Configuración). Asegúrate de haber creado la base de datos Firestore en 'Modo de prueba'.");
             isSettingsLoaded = true;
             checkInitReady();
         });
@@ -1077,9 +1082,15 @@
             if (doc.exists) {
                 db = doc.data().db;
             } else {
-                firestore.collection('config').doc('catalog').set({ db: defaultDb });
+                firestore.collection('config').doc('catalog').set({ db: defaultDb }).catch(e => console.error("Error setting catalog", e));
                 db = defaultDb;
             }
+            isCatalogLoaded = true;
+            checkInitReady();
+        }, (error) => {
+            console.error("Firebase Catalog Error:", error);
+            alert("Atención: No se pudo conectar a Firebase (Catálogo). Asegúrate de haber creado la base de datos Firestore en 'Modo de prueba'.");
+            db = defaultDb;
             isCatalogLoaded = true;
             checkInitReady();
         });
