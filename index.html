@@ -1205,10 +1205,16 @@
             grid.appendChild(adminCard);
         }
 
-        function showMenu(fromHistory = false) {
+        function hideAllViews() {
+            document.getElementById('menu-view').classList.remove('active');
             document.getElementById('detail-view').classList.remove('active');
             document.getElementById('caja-view').classList.remove('active');
             document.getElementById('admin-view').classList.remove('active');
+            document.getElementById('cart-view').classList.remove('active');
+        }
+
+        function showMenu(fromHistory = false) {
+            hideAllViews();
             document.getElementById('menu-view').classList.add('active');
             if (!fromHistory) {
                 history.pushState({ view: 'menu' }, '', '#menu');
@@ -1228,7 +1234,7 @@
 
             setupFilters(inst);
 
-            document.getElementById('menu-view').classList.remove('active');
+            hideAllViews();
             document.getElementById('detail-view').classList.add('active');
             if (!fromHistory) {
                 history.pushState({ view: 'detail', id: id }, '', '#cotizador');
@@ -1603,7 +1609,7 @@
         // LOGICA DE CAJA
         // ============================================
         function openCaja(fromHistory = false) {
-            document.getElementById('menu-view').classList.remove('active');
+            hideAllViews();
             document.getElementById('caja-view').classList.add('active');
             if (!fromHistory) {
                 history.pushState({ view: 'caja' }, '', '#caja');
@@ -1768,7 +1774,7 @@
         let adminCurrentGender = null;
 
         function openAdmin(fromHistory = false) {
-            document.getElementById('menu-view').classList.remove('active');
+            hideAllViews();
             document.getElementById('admin-view').classList.add('active');
             if (!fromHistory) {
                 history.pushState({ view: 'admin' }, '', '#admin');
@@ -2055,7 +2061,7 @@
         // LOGICA DEL CARRITO
         // ============================================
         function openCartView(fromHistory = false) {
-            document.getElementById('menu-view').classList.remove('active');
+            hideAllViews();
             document.getElementById('cart-view').classList.add('active');
             if (!fromHistory) {
                 history.pushState({ view: 'cart' }, '', '#cart');
