@@ -712,7 +712,7 @@
     <!-- VISTA 2: DETALLE INSTITUCION -->
     <div id="detail-view">
         <div class="top-bar">
-            <button class="btn-back" onclick="showMenu()">&#8592; Volver</button>
+            <button class="btn-back" onclick="navigateBack()">&#8592; Volver</button>
             <div class="inst-info">
                 <img id="inst-logo" src="" alt="">
                 <h2 id="inst-name">Nombre</h2>
@@ -786,7 +786,7 @@
     <!-- VISTA 3: CAJA -->
     <div id="caja-view">
         <div class="top-bar">
-            <button class="btn-back" onclick="showMenu()">&#8592; Volver</button>
+            <button class="btn-back" onclick="navigateBack()">&#8592; Volver</button>
             <div class="inst-info">
                 <h2 style="margin-left:10px;">Caja y Movimientos</h2>
             </div>
@@ -874,7 +874,7 @@
     <!-- VISTA 4: ADMINISTRAR -->
     <div id="admin-view">
         <div class="top-bar">
-            <button class="btn-back" onclick="showMenu()">&#8592; Volver</button>
+            <button class="btn-back" onclick="navigateBack()">&#8592; Volver</button>
             <div class="inst-info">
                 <h2 style="margin-left:10px;">⚙️ Administración y Catálogo</h2>
             </div>
@@ -1174,17 +1174,20 @@
             grid.appendChild(adminCard);
         }
 
-        function showMenu() {
+        function showMenu(fromHistory = false) {
             document.getElementById('detail-view').classList.remove('active');
             document.getElementById('caja-view').classList.remove('active');
             document.getElementById('admin-view').classList.remove('active');
             document.getElementById('menu-view').classList.add('active');
+            if (!fromHistory) {
+                history.pushState({ view: 'menu' }, '', '#menu');
+            }
         }
 
         // ============================================
         // LOGICA DE COTIZADOR
         // ============================================
-        function openInstitution(id) {
+        function openInstitution(id, fromHistory = false) {
             currentInstId = id;
             wasFullUniform = false;
             const inst = db[id];
@@ -1196,6 +1199,9 @@
 
             document.getElementById('menu-view').classList.remove('active');
             document.getElementById('detail-view').classList.add('active');
+            if (!fromHistory) {
+                history.pushState({ view: 'detail', id: id }, '', '#cotizador');
+            }
         }
 
         function setupFilters(inst) {
@@ -1536,9 +1542,12 @@
         // ============================================
         // LOGICA DE CAJA
         // ============================================
-        function openCaja() {
+        function openCaja(fromHistory = false) {
             document.getElementById('menu-view').classList.remove('active');
             document.getElementById('caja-view').classList.add('active');
+            if (!fromHistory) {
+                history.pushState({ view: 'caja' }, '', '#caja');
+            }
             
             // Set current datetime automatically
             const now = new Date();
@@ -1698,9 +1707,12 @@
         let adminCurrentLevel = null;
         let adminCurrentGender = null;
 
-        function openAdmin() {
+        function openAdmin(fromHistory = false) {
             document.getElementById('menu-view').classList.remove('active');
             document.getElementById('admin-view').classList.add('active');
+            if (!fromHistory) {
+                history.pushState({ view: 'admin' }, '', '#admin');
+            }
             
             const instSelect = document.getElementById('admin-inst-select');
             instSelect.innerHTML = '';
@@ -1889,6 +1901,52 @@
         window.onload = () => {
             // Wait for checkInitReady via Firebase onSnapshot
         };
+    </script>
+    <!-- MODAL INSTALAR APP -->
+    <div id="install-modal" style="display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 400px; background: white; padding: 20px; border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); z-index: 9999; text-align: center; border: 2px solid var(--accent-color);">
+        <h3 style="margin: 0 0 10px 0; color: var(--accent-color); font-size: 18px;">📲 Instala esta App</h3>
+        <p style="font-size: 14px; color: var(--text-muted); margin: 0 0 15px 0;">Para una mejor experiencia, añade esta página a tu pantalla de inicio desde el menú de opciones de tu navegador (Añadir a pantalla principal).</p>
+        <button class="btn-action btn-success" style="width: 100%; margin: 0 auto; justify-content: center;" onclick="closeInstallModal()">Entendido</button>
+    </div>
+
+    <!-- SCRIPT HISTORY Y MODAL -->
+    <script>
+        // Manejo del botón "Atrás" del celular
+        if (!history.state) {
+            history.replaceState({ view: 'menu' }, '', '#menu');
+        }
+
+        window.onpopstate = function(event) {
+            if (event.state && event.state.view) {
+                const view = event.state.view;
+                if (view === 'menu') showMenu(true);
+                else if (view === 'detail') openInstitution(event.state.id, true);
+                else if (view === 'caja') openCaja(true);
+                else if (view === 'admin') openAdmin(true);
+            } else {
+                showMenu(true);
+            }
+        };
+
+        function navigateBack() {
+            if (history.length > 1) {
+                history.back();
+            } else {
+                showMenu();
+            }
+        }
+
+        // Modal de instalación
+        setTimeout(() => {
+            if (!localStorage.getItem('app_installed_prompt')) {
+                document.getElementById('install-modal').style.display = 'block';
+            }
+        }, 3000);
+
+        function closeInstallModal() {
+            localStorage.setItem('app_installed_prompt', 'true');
+            document.getElementById('install-modal').style.display = 'none';
+        }
     </script>
 </body>
 </html>
