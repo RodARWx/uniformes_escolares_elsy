@@ -766,8 +766,14 @@
             </div>
 
             <div id="sale-actions" style="display: none; margin-top: 25px; padding-top: 20px; border-top: 1px dashed var(--border-color); flex-direction: column; gap: 15px; align-items: flex-end;">
+                <div id="vuelto-section" style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; width: 100%; align-items: center; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <label style="font-weight: 600; font-size: 14px; color: var(--text-color);">Recibe:</label>
+                    <input type="number" id="cash-received" style="width: 100px; padding: 8px; font-weight: bold;" step="0.50" min="0" placeholder="$0.00" oninput="calculateChange()">
+                    <div style="font-weight: 800; font-size: 18px; color: var(--success); margin-left: 15px; min-width: 120px; text-align:right;" id="change-display">Vuelto: $0.00</div>
+                </div>
+
                 <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; width: 100%;">
-                    <select id="sale-payment-method" style="min-width: 150px; font-weight: 700;">
+                    <select id="sale-payment-method" style="min-width: 150px; font-weight: 700;" onchange="toggleVueltoSection()">
                         <option value="Efectivo">💵 Efectivo</option>
                         <option value="Transferencia">📱 Transferencia</option>
                     </select>
@@ -1445,8 +1451,39 @@
             const saleActions = document.getElementById('sale-actions');
             if (finalTotal > 0) {
                 saleActions.style.display = 'flex';
+                if (typeof calculateChange === 'function') calculateChange();
             } else {
                 saleActions.style.display = 'none';
+            }
+        }
+
+        function toggleVueltoSection() {
+            const method = document.getElementById('sale-payment-method').value;
+            const vueltoSec = document.getElementById('vuelto-section');
+            if (method === 'Efectivo') {
+                vueltoSec.style.display = 'flex';
+                calculateChange();
+            } else {
+                vueltoSec.style.display = 'none';
+                document.getElementById('cash-received').value = '';
+                document.getElementById('change-display').textContent = 'Vuelto: $0.00';
+            }
+        }
+
+        function calculateChange() {
+            const totalStr = document.getElementById('total-price').textContent.replace('$', '');
+            const total = parseFloat(totalStr) || 0;
+            const receivedStr = document.getElementById('cash-received').value;
+            const received = parseFloat(receivedStr);
+            
+            const display = document.getElementById('change-display');
+            if (!receivedStr || isNaN(received) || received < total) {
+                display.textContent = 'Vuelto: $0.00';
+                display.style.color = 'var(--text-muted)';
+            } else {
+                const change = received - total;
+                display.textContent = `Vuelto: $${change.toFixed(2)}`;
+                display.style.color = 'var(--success)';
             }
         }
 
