@@ -779,8 +779,9 @@
     <div id="cart-view">
         <div class="top-bar">
             <button class="btn-back" onclick="navigateBack()">&#8592; Volver</button>
-            <div class="inst-info">
+            <div class="inst-info" style="display:flex; justify-content:space-between; width:100%; align-items:center;">
                 <h2 style="margin-left:10px;">🛒 Mi Carrito</h2>
+                <button class="btn-action btn-outline" style="padding: 5px 10px; font-size: 12px; color: var(--danger); border-color: var(--danger); margin-right:10px;" onclick="clearCart()">🗑️ Vaciar</button>
             </div>
         </div>
 
@@ -961,7 +962,7 @@
 
     <script>
         let db = {};
-        let shoppingCart = [];
+        let shoppingCart = JSON.parse(localStorage.getItem('shoppingCart')) || [];
         let defaultDb = {
             "benalcazar": {
                 "name": "Colegio Sebastian de Benalcazar",
@@ -1523,36 +1524,69 @@
             }
         }
 
+        function saveCart() {
+            localStorage.setItem('shoppingCart', JSON.stringify(shoppingCart));
+            updateCartBadge();
+        }
+
         function addToCart() {
             let finalTotalText = document.getElementById('total-price').textContent;
             let finalTotal = parseFloat(finalTotalText.replace('$', ''));
             if (finalTotal <= 0) return;
 
             const instName = document.getElementById('inst-name').textContent;
-            let detailLines = [`Venta Uniforme: ${instName}`];
+            let addedCount = 0;
             
             const allRows = document.querySelectorAll('tr.item-row');
             allRows.forEach(row => {
                 const checkbox = row.querySelector('input[type="checkbox"]');
                 if (checkbox && checkbox.checked) {
                     const prenda = row.querySelector('.col-prenda').textContent.trim();
-                    detailLines.push(`- ${prenda}`);
+                    const selectTalla = row.querySelector('.item-size-select');
+                    const sizeIndex = selectTalla.value;
+                    const sizeStr = selectTalla.options[selectTalla.selectedIndex].textContent;
+                    const price = parseFloat(selectTalla.options[selectTalla.selectedIndex].dataset.precio);
+                    
+                    shoppingCart.push({
+                        instId: currentInstId,
+                        instName: instName,
+                        level: currentLevel,
+                        gender: currentGender,
+                        prenda: prenda,
+                        sizeIndex: parseInt(sizeIndex),
+                        sizeStr: sizeStr,
+                        price: price,
+                        quantity: 1,
+                        isOpcional: row.dataset.type === 'opcional'
+                    });
+                    addedCount++;
                 }
             });
 
             const penaltyRow = document.getElementById('penalty-row');
             if (penaltyRow.style.display === 'flex') {
-                detailLines.push(`- ${penaltyRow.textContent}`);
+                const penaltyAmount = parseFloat(document.getElementById('penalty-price').textContent.replace('$', ''));
+                shoppingCart.push({
+                    instId: currentInstId,
+                    instName: instName,
+                    level: currentLevel,
+                    gender: currentGender,
+                    prenda: "Recargo por talla mayor",
+                    sizeIndex: -1,
+                    sizeStr: "N/A",
+                    price: penaltyAmount,
+                    quantity: 1,
+                    isOpcional: true
+                });
+                addedCount++;
             }
 
-            shoppingCart.push({
-                detail: detailLines.join('\n'),
-                amount: finalTotal
-            });
-
-            updateCartBadge();
-            deselectAll();
-            showMenu();
+            if (addedCount > 0) {
+                saveCart();
+                alert(`✅ Se añadieron ${addedCount} prenda(s) al carrito.`);
+                deselectAll();
+                showMenu();
+            }
         }
 
         function updateCartBadge() {
@@ -2039,14 +2073,54 @@
                 document.getElementById('cart-checkout-actions').style.display = 'none';
             } else {
                 shoppingCart.forEach((item, index) => {
-                    total += item.amount;
+                    const itemTotal = item.price * item.quantity;
+                    total += itemTotal;
+                    
                     const el = document.createElement('div');
-                    el.style = 'background: white; padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.05);';
-                    el.innerHTML = `
-                        <div style="white-space: pre-wrap; font-size: 14px; margin-bottom: 10px; padding-right:30px; line-height: 1.5;">${item.detail}</div>
-                        <div style="font-weight: 800; font-size: 16px; color: var(--primary-color);">Total: $${item.amount.toFixed(2)}</div>
-                        <button onclick="removeFromCart(${index})" style="position: absolute; top: 10px; right: 10px; background: none; border: none; color: var(--danger); font-size: 18px; cursor: pointer;">❌</button>
+                    el.style = 'background: white; padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 8px;';
+                    
+                    let innerHTML = `
+                        <div style="font-weight: bold; font-size: 14px; padding-right: 25px;">${item.instName} - ${item.prenda}</div>
+                        <div style="font-size: 13px; color: var(--text-muted);">${item.level} > ${item.gender}</div>
                     `;
+
+                    if (item.isOpcional && item.sizeIndex === -1) {
+                        // Recargo u opcional sin talla
+                        innerHTML += `
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px;">
+                                <div style="font-size: 14px; font-weight: bold;">Precio: $${item.price.toFixed(2)}</div>
+                                <div style="font-weight: 900; font-size: 16px; color: var(--primary-color);">Total: $${itemTotal.toFixed(2)}</div>
+                            </div>
+                        `;
+                    } else {
+                        const tableData = db[item.instId] && db[item.instId].tables[`${item.level}_${item.gender}`];
+                        let selectHTML = `<select class="item-size-select" onchange="updateCartItemSize(${index}, this.value)" style="padding: 4px; border-radius: 4px; border: 1px solid var(--border-color); font-size: 13px;">`;
+                        
+                        if (tableData && tableData.sizes) {
+                            const preciosArr = (tableData.items && tableData.items[item.prenda]) || (tableData.opcionales && tableData.opcionales[item.prenda]);
+                            if (preciosArr) {
+                                tableData.sizes.forEach((s, idx) => {
+                                    const p = preciosArr[idx] || 0;
+                                    const selected = item.sizeIndex === idx ? 'selected' : '';
+                                    selectHTML += `<option value="${idx}" ${selected}>Talla ${s} ($${p.toFixed(2)})</option>`;
+                                });
+                            }
+                        } else {
+                            selectHTML += `<option value="${item.sizeIndex}">Talla ${item.sizeStr}</option>`;
+                        }
+                        selectHTML += `</select>`;
+
+                        innerHTML += `
+                            <div style="display: flex; gap: 10px; align-items: center; margin-top: 5px; flex-wrap: wrap;">
+                                <div style="font-size:13px;">Talla: ${selectHTML}</div>
+                                <div style="font-size:13px;">Cant: <input type="number" min="1" value="${item.quantity}" onchange="updateCartItemQty(${index}, this.value)" style="width: 45px; padding: 4px; text-align: center; border: 1px solid var(--border-color); border-radius: 4px;"></div>
+                                <div style="margin-left: auto; font-weight: 900; font-size: 16px; color: var(--primary-color);">Total: $${itemTotal.toFixed(2)}</div>
+                            </div>
+                        `;
+                    }
+
+                    innerHTML += `<button onclick="removeFromCart(${index})" style="position: absolute; top: 10px; right: 10px; background: none; border: none; color: var(--danger); font-size: 18px; cursor: pointer;">❌</button>`;
+                    el.innerHTML = innerHTML;
                     container.appendChild(el);
                 });
                 document.getElementById('cart-checkout-actions').style.display = 'flex';
@@ -2056,9 +2130,44 @@
             calculateChange();
         }
 
+        function updateCartItemSize(index, newSizeIndex) {
+            newSizeIndex = parseInt(newSizeIndex);
+            const item = shoppingCart[index];
+            const tableData = db[item.instId] && db[item.instId].tables[`${item.level}_${item.gender}`];
+            if (tableData) {
+                const preciosArr = (tableData.items && tableData.items[item.prenda]) || (tableData.opcionales && tableData.opcionales[item.prenda]);
+                if (preciosArr) {
+                    item.sizeIndex = newSizeIndex;
+                    item.sizeStr = tableData.sizes[newSizeIndex];
+                    item.price = preciosArr[newSizeIndex];
+                    saveCart();
+                    renderCart();
+                }
+            }
+        }
+
+        function updateCartItemQty(index, newQty) {
+            newQty = parseInt(newQty);
+            if (newQty < 1) newQty = 1;
+            shoppingCart[index].quantity = newQty;
+            saveCart();
+            renderCart();
+        }
+
+        function clearCart() {
+            if (confirm("¿Estás seguro de vaciar todo el carrito?")) {
+                shoppingCart = [];
+                saveCart();
+                renderCart();
+                document.getElementById('cart-view').classList.remove('active');
+                if (history.length > 1) history.back();
+                else showMenu();
+            }
+        }
+
         function removeFromCart(index) {
             shoppingCart.splice(index, 1);
-            updateCartBadge();
+            saveCart();
             renderCart();
         }
 
@@ -2072,10 +2181,14 @@
             let finalDetailLines = [];
             
             shoppingCart.forEach((item, index) => {
-                finalTotal += item.amount;
-                finalDetailLines.push(`=== VENTA #${index+1} ===`);
-                finalDetailLines.push(item.detail);
-                finalDetailLines.push('');
+                const itemTotal = item.price * item.quantity;
+                finalTotal += itemTotal;
+                
+                if (item.sizeIndex === -1) {
+                    finalDetailLines.push(`- ${item.prenda}: $${itemTotal.toFixed(2)}`);
+                } else {
+                    finalDetailLines.push(`- ${item.quantity}x ${item.prenda} (Talla ${item.sizeStr}) en ${item.instName} > ${item.gender}: $${itemTotal.toFixed(2)}`);
+                }
             });
 
             const now = new Date();
@@ -2092,7 +2205,7 @@
             firestore.collection('caja').add(transaction).then(() => {
                 alert(`✅ Venta global registrada exitosamente por $${finalTotal.toFixed(2)}`);
                 shoppingCart = [];
-                updateCartBadge();
+                saveCart();
                 document.getElementById('cash-received').value = '';
                 document.getElementById('cart-view').classList.remove('active');
                 if (history.length > 1) history.back();
