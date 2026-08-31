@@ -44,8 +44,8 @@
         }
 
         /* VISTAS */
-        #menu-view, #detail-view, #caja-view { display: none; opacity: 0; transition: opacity 0.4s ease; }
-        #menu-view.active, #detail-view.active, #caja-view.active { display: block; opacity: 1; animation: fadeIn 0.5s ease; }
+        #menu-view, #detail-view, #caja-view, #admin-view { display: none; opacity: 0; transition: opacity 0.4s ease; }
+        #menu-view.active, #detail-view.active, #caja-view.active, #admin-view.active { display: block; opacity: 1; animation: fadeIn 0.5s ease; }
         
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
@@ -846,8 +846,195 @@
         </div>
     </div>
 
+    <!-- VISTA 4: ADMINISTRAR -->
+    <div id="admin-view">
+        <div class="top-bar">
+            <button class="btn-back" onclick="showMenu()">&#8592; Volver</button>
+            <div class="inst-info">
+                <h2 style="margin-left:10px;">⚙️ Administración y Catálogo</h2>
+            </div>
+        </div>
+
+        <div class="filters-container" style="flex-direction: column; align-items: flex-start;">
+            <h3 style="margin-top:0;">Reglas de Negocio</h3>
+            <div class="filter-group" style="flex-direction: row; align-items: center; gap: 15px;">
+                <label>Recargo por Uniforme Incompleto / Calentador Suelto ($2.00)</label>
+                <input type="checkbox" id="admin-penalty-toggle" style="width: 24px; height: 24px;" onchange="saveAdminSettings()">
+            </div>
+        </div>
+
+        <div class="filters-container">
+            <h3 style="margin-top:0; width: 100%;">Editor de Precios y Prendas</h3>
+            <div class="filter-group">
+                <label>Institución</label>
+                <select id="admin-inst-select" onchange="onAdminInstChange()"></select>
+            </div>
+            <div class="filter-group">
+                <label>Nivel</label>
+                <select id="admin-level-select" onchange="onAdminContextChange()"></select>
+            </div>
+            <div class="filter-group">
+                <label>Género</label>
+                <select id="admin-gender-select" onchange="onAdminContextChange()"></select>
+            </div>
+            <div class="filter-group" style="margin-left: auto;">
+                <button class="btn-action btn-success" onclick="saveAdminData()">💾 Guardar Catálogo</button>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Prenda</th>
+                            <th>Es Opcional</th>
+                            <!-- Tallas -->
+                            <th id="admin-th-tallas" colspan="5">Precios por Talla</th>
+                            <th style="text-align:center; width:80px;">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-table-body">
+                        <!-- Items de admin -->
+                    </tbody>
+                </table>
+            </div>
+            <div style="margin-top: 15px;">
+                <button class="btn-action btn-outline" onclick="addAdminRow()">+ Añadir Prenda</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        const db = {"24_mayo": {"name": "Unidad Educativa 24 de Mayo", "logo": "escudos/24 de Mayo.jfif", "has_levels": true, "levels": ["Escuela", "Colegio"], "genders": ["Mujer", "Hombre"], "tables": {"Escuela_Mujer": {"sizes": ["4 (28)", "6(30)", "8(32)", "10(34)", "12(36)"], "items": {"FALDA": [10, 10, 12, 14, 15], "SACO": [15, 16, 16, 17, 18], "BLUSA": [10, 10, 12, 13, 14], "MANDIL": [9, 10, 10, 11, 12], "CALENTADOR EXTERIOR": [20, 22, 24, 26, 28], "CAMISETA": [6, 6, 6, 7, 8], "SHORT": [6, 6, 6, 6, 6], "ESCARAPELA": [3, 3, 3, 3, 3]}, "opcionales": {"CHOMPA IMPERMEABLE": [20, 20, 22, 24, 25], "GORRA": [5, 5, 5, 5, 5], "MALLAS": [5, 5, 5, 7, 7], "MEDIAS PARADA": [3, 3, 3, 3, 3]}}, "Colegio_Mujer": {"sizes": ["10(34)", "12(36)", "14(38)", "16(40)", "18(42)"], "items": {"FALDA": [14, 15, 16, 17, 18], "SACO": [17, 18, 19, 20, 21], "BLUSA": [13, 14, 15, 16, 17], "BLUSA CUELLO CAMISA": [14, 15, 16, 17, 17], "CAPA": [32, 32, 32, 32, 32], "CALENTADOR EXTERIOR": [26, 28, 30, 32, 34], "CAMISETA": [7, 8, 8, 9, 9], "LICRA": [9, 9, 9, 10, 10], "ESCARAPELA": [3, 3, 3, 3, 3]}, "opcionales": {"CHOMPA IMPERMEABLE": [20, 20, 22, 24, 25], "GORRA": [5, 5, 5, 5, 5], "MALLAS": [5, 5, 5, 7, 7], "MEDIAS PARADA": [3, 3, 3, 3, 3]}}, "Escuela_Hombre": {"sizes": ["4 (28)", "6(30)", "8(32)", "10(34)", "12(36)"], "items": {"PANTALON CASIMIR": [15, 16, 18, 20, 22], "SACO": [15, 16, 17, 18, 18], "CAMISETA TIPO POLO": [8, 8, 9, 9, 10], "MANDIL": [12, 12, 13, 14, 15], "CALENTADOR EXTERIOR": [24, 26, 28, 28, 30], "CAMISETA": [6, 7, 7, 8, 9], "SHORT": [6, 7, 7, 8, 8], "ESCARAPELA": [3, 3, 3, 3, 3], "MEDIAS EFF": [3, 3, 3, 3, 3]}, "opcionales": {"CHOMPA IMPERMEABLE": [20, 20, 22, 24, 25], "GORRA": [5, 5, 5, 5, 5], "MEDIAS PARADA": [3, 3, 3, 3, 3]}}, "Colegio_Hombre": {"sizes": ["10(34)", "12(36)", "14(38)", "16(40)", "18(42)"], "items": {"PANTALON CASIMIR": [20, 22, 22, 24, 24], "SACO": [16, 17, 18, 18, 20], "LEVA": [50, 50, 50, 50, 50], "CAMISETA TIPO POLO": [9, 10, 11, 12, 12], "CAMISA": [14, 15, 16, 17, 17], "CALENTADOR EXTERIOR": [28, 30, 30, 32, 34], "CAMISETA": [8, 8, 9, 9, 10], "SHORT": [7, 7, 8, 8, 9], "MEDIAS EF": [3, 3, 3, 3, 3], "CORBATA": [3, 3, 3, 3, 3], "ESCARAPELA": [3, 3, 3, 3, 3]}, "opcionales": {"CHOMPA IMPERMEABLE": [20, 20, 22, 24, 25], "GORRA": [5, 5, 5, 5, 5], "MEDIAS PARADA": [3, 3, 3, 3, 3]}}}}, "abraham": {"name": "Abraham Lincoln", "logo": "escudos/Abraham.jpeg", "has_levels": false, "levels": ["\u00danico"], "genders": ["Mujer", "Hombre"], "tables": {"\u00danico_Mujer": {"sizes": ["4 (28)", "6(30)", "8(32)", "10(34)", "12(36)", "14(38)"], "items": {"VESTIDO": [20, 22, 24, 24, 26, 26], "SACO": [15, 16, 16, 17, 18, 18], "POLO": [6, 7, 7, 8, 8, 9], "CALENTADOR EXTERIOR": [22, 24, 26, 28, 28, 30], "CAMISETA": [6, 7, 7, 8, 9, 10], "SHORT": [5, 6, 6, 7, 7, 8], "MEDIAS EFF": [2, 2, 2, 2, 2, 2], "MANDIL": [10, 10, 0, 0, 0, 0]}, "opcionales": {"CHOMPA IMPERMEABLE": [18, 18, 20, 20, 22, 22], "GORRA": [5, 5, 5, 5, 5, 5], "PROMO 3 MEDIAS GITANA": [7, 7, 7, 7, 7, 7], "PROMO 3 MEDIAS BLANCA EDUCA": [5, 5, 5, 5, 5, 5], "MALLA": [5, 5, 5, 7, 7, 7]}}, "\u00danico_Hombre": {"sizes": ["4 (28)", "6(30)", "8(32)", "10(34)", "12(36)", "14(38)"], "items": {"JEAN": [13, 14, 15, 16, 17, 18], "SACO": [15, 16, 16, 17, 18, 18], "POLO": [6, 7, 7, 8, 8, 9], "CALENTADOR EXTERIOR": [22, 24, 26, 28, 28, 30], "CAMISETA": [6, 7, 7, 8, 9, 10], "SHORT": [5, 6, 6, 7, 7, 8], "MEDIAS EFF": [2, 2, 2, 2, 2, 2], "MANDIL": [10, 10, 0, 0, 0, 0]}, "opcionales": {"CHOMPA IMPERMEABLE": [18, 18, 20, 20, 22, 22], "GORRA": [5, 5, 5, 5, 5, 5], "PROMO 3 MEDIAS GITANA": [7, 7, 7, 7, 7, 7], "PROMO 3 MEDIAS BLANCA EDUCA": [5, 5, 5, 5, 5, 5], "MALLA": [5, 5, 5, 7, 7, 7]}}}}, "roman": {"name": "Centro de Educaci\u00f3n Inicial Jos\u00e9 Luis Rom\u00e1n", "logo": "escudos/Roman.jfif", "has_levels": false, "levels": ["\u00danico"], "genders": ["Mujer", "Hombre"], "tables": {"\u00danico_Mujer": {"sizes": ["4 (28)", "6(30)", "8(32)"], "items": {"VESTIDO": [12, 12, 12], "SACO": [13, 13, 13], "POLO": [6, 6, 6], "MANDIL": [14, 14, 14]}, "opcionales": {"CHOMPA IMPERMEABLE": [18, 20, 22], "MALLA": [5, 5, 5]}}, "\u00danico_Hombre": {"sizes": ["4 (28)", "6(30)", "8(32)"], "items": {"CASIMIR": [12, 12, 12], "SACO": [13, 13, 13], "POLO": [6, 6, 6], "MANDIL": [14, 14, 14]}, "opcionales": {"CHOMPA IMPERMEABLE": [18, 20, 22], "MALLA": [5, 5, 5]}}}}, "sanchez": {"name": "Escuela de Educaci\u00f3n B\u00e1sica Manuel Mar\u00eda S\u00e1nchez", "logo": "escudos/Manuel.jpeg", "has_levels": false, "levels": ["\u00danico"], "genders": ["Mujer", "Hombre"], "tables": {"\u00danico_Mujer": {"sizes": ["3 (28)", "4(28)", "6(30)"], "items": {"VESTIDO": [14, 14, 15], "SACO": [14, 14, 15], "POLO": [6, 7, 7], "CALENTADOR EXTERIOR": [22, 24, 26], "CAMISETA": [6, 7, 7], "GORRA": [5, 5, 5]}, "opcionales": {"MALLAS": [5, 5, 5], "MEDIAS PLOMAS HOMBRE 3 X $5": [5, 5, 5]}}, "\u00danico_Hombre": {"sizes": ["3 (28)", "4(28)", "6(30)"], "items": {"CASIMIR": [13, 13, 14], "SACO": [14, 14, 15], "POLO": [6, 7, 7], "CALENTADOR EXTERIOR": [22, 24, 26], "CAMISETA": [6, 7, 7], "GORRA": [5, 5, 5]}, "opcionales": {"MALLAS": [5, 5, 5], "MEDIAS PLOMAS HOMBRE 3 X $5": [5, 5, 5]}}}}, "holguin": {"name": "Unidad Educativa Juan Larrea Holgu\u00edn", "logo": "escudos/Holguin.jfif", "has_levels": true, "levels": ["Escuela", "Colegio"], "genders": ["Mujer", "Hombre"], "tables": {"Escuela_Mujer": {"sizes": ["4 (28)", "6(30)", "8(32)", "10(34)", "12(36)", "14(38)"], "items": {"VESTIDO": [20, 22, 24, 26, 28, 30], "SACO": [15, 15, 16, 17, 18, 18], "CAMISETA TIPO POLO": [7, 8, 8, 9, 10, 11], "MANDIL": [12, 12, 12, 0, 0, 0], "CALENTADOR EXTERIOR": [22, 24, 26, 28, 30, 30], "CAMISETA": [6, 6, 7, 7, 8, 8], "SHORT": [6, 6, 7, 7, 8, 8], "MEDIAS": [3, 3, 3, 3, 3, 3]}, "opcionales": {"MALLAS CON TALON": [5, 5, 5, 7, 7, 7], "CHOMPA IMPERMEABLE": [20, 20, 22, 22, 24, 24]}}, "Escuela_Hombre": {"sizes": ["4 (28)", "6(30)", "8(32)", "10(34)", "12(36)", "14(38)"], "items": {"PANTALON": [15, 15, 18, 20, 22, 22], "SACO": [15, 15, 16, 17, 18, 18], "CAMISETA TIPO POLO": [7, 8, 8, 9, 10, 11], "MANDIL": [12, 12, 12, 0, 0, 0], "CALENTADOR EXTERIOR": [22, 24, 26, 28, 30, 30], "CAMISETA": [7, 7, 8, 8, 9, 9], "SHORT": [5, 6, 7, 7, 8, 8], "MEDIAS": [3, 3, 3, 3, 3, 3]}, "opcionales": {"MALLAS CON TALON": [5, 5, 5, 7, 7, 7], "CHOMPA IMPERMEABLE": [20, 20, 22, 22, 24, 24]}}, "Colegio_Mujer": {"sizes": ["10(34)", "12(36)", "14(38)", "16(40)", "18(42)"], "items": {"FALDA": [18, 18, 19, 20, 20], "SACO": [17, 18, 18, 20, 20], "CHOMPA DE PARADA": [32, 32, 32, 35, 35], "CAMISETA TIPO POLO": [9, 10, 11, 12, 12], "BLUSA": [14, 15, 15, 16, 16], "CALENTADOR EXTERIOR": [28, 30, 30, 32, 34], "CAMISETA": [8, 9, 9, 10, 11], "LICRA": [7, 8, 8, 9, 9], "MEDIAS EF": [3, 3, 3, 3, 3], "CORBATA": [3, 3, 3, 3, 3]}, "opcionales": {"GORRA": [6, 6, 6, 6, 6], "MALLAS": [7, 7, 7, 7, 7]}}, "Colegio_Hombre": {"sizes": ["10(34)", "12(36)", "14(38)", "16(40)", "18(42)"], "items": {"PANTALON": [20, 22, 22, 24, 24], "SACO": [17, 18, 18, 20, 20], "CHOMPA DE PARADA": [32, 32, 32, 35, 35], "CAMISETA TIPO POLO": [9, 10, 11, 12, 12], "CAMISA": [15, 16, 16, 17, 17], "CALENTADOR EXTERIOR": [28, 30, 30, 32, 34], "CAMISETA": [8, 9, 9, 10, 11], "SHORT": [7, 8, 8, 9, 9], "MEDIAS EF": [3, 3, 3, 3, 3], "CORBATA": [3, 3, 3, 3, 3]}, "opcionales": {"GORRA": [6, 6, 6, 6, 6], "MALLAS": [7, 7, 7, 7, 7]}}}}};
+        let db = {};
+        let defaultDb = {
+            "benalcazar": {
+                "name": "Colegio Sebastian de Benalcazar",
+                "logo": "escudos/benalcazar.jpg",
+                "has_levels": true,
+                "levels": ["Escuela", "Colegio"],
+                "genders": ["Mujer", "Hombre"],
+                "tables": {
+                    "Escuela_Mujer": {
+                        "sizes": ["6(30)", "8(32)", "10(34)", "12(36)"],
+                        "items": {
+                            "FALDA": [13, 14, 15, 16],
+                            "SACO": [14, 15, 16, 17],
+                            "BLUSA CELESTE": [10, 11, 11, 12],
+                            "BLUSA BLANCA": [10, 11, 11, 12],
+                            "CALENTADOR EXTERIOR": [23, 24, 25, 26],
+                            "BUZO": [8, 8, 9, 10],
+                            "LICRA": [6, 6, 8, 8],
+                            "CORBATA": [2, 2, 2, 2]
+                        },
+                        "opcionales": {
+                            "MEDIAS DE DIARIO 3 UNI": [3, 3, 3, 3],
+                            "MEDIAS EEFF 3 UNID": [3, 3, 3, 3],
+                            "MALLA": [8, 8, 8, 8]
+                        }
+                    },
+                    "Colegio_Mujer": {
+                        "sizes": ["10(34)", "12(36)", "14(38)", "16(40)", "18(42)"],
+                        "items": {
+                            "FALDA": [15, 16, 18, 18, 20],
+                            "SACO": [16, 17, 18, 18, 20],
+                            "BLUSA CELESTE": [13, 14, 15, 15, 16],
+                            "BLUSA CUELLO CAMISA": [13, 14, 15, 15, 16],
+                            "CHAQUETA": [42, 45, 45, 48, 50],
+                            "CALENTADOR EXTERIOR": [25, 26, 28, 30, 32],
+                            "BUZO": [9, 10, 10, 10, 12],
+                            "LICRA": [8, 8, 8, 8, 8],
+                            "ESCARAPELA": [3, 3, 3, 3, 3],
+                            "CORBATA": [3, 3, 3, 3, 3]
+                        },
+                        "opcionales": {
+                            "MEDIAS DE DIARIO 3 UNI": [3, 3, 3, 3, 3],
+                            "MEDIAS EEFF 3 UNID": [3, 3, 3, 3, 3],
+                            "MALLA": [8, 8, 8, 8, 8]
+                        }
+                    },
+                    "Escuela_Hombre": {
+                        "sizes": ["6(30)", "8(32)", "10(34)", "12(36)"],
+                        "items": {
+                            "CASIMIR PLOMO DIARIO": [14, 15, 16, 18],
+                            "CASIMIR PLOMO PARADA": [14, 15, 16, 18],
+                            "CAMISA CELESTE": [11, 12, 13, 15],
+                            "CAMISA CUELLO CAMISA": [11, 12, 13, 15],
+                            "SACO DE LANA": [14, 15, 16, 17],
+                            "CALENTADOR EXTERIOR": [23, 24, 25, 26],
+                            "BUZO": [8, 8, 9, 10],
+                            "PANTALONETA": [6, 6, 8, 8],
+                            "CORBATA": [3, 3, 3, 3]
+                        },
+                        "opcionales": {
+                            "MEDIAS DE DIARIO 3 UNI": [3, 3, 3, 3],
+                            "MEDIAS EEFF 3 UNID": [3, 3, 3, 3],
+                            "MALLA": [8, 8, 8, 8]
+                        }
+                    },
+                    "Colegio_Hombre": {
+                        "sizes": ["10(34)", "12(36)", "14(38)", "16(40)", "18(42)"],
+                        "items": {
+                            "CASIMIR PLOMO DIARIO": [16, 18, 20, 20, 22],
+                            "CASIMIR PLOMO PARADA": [16, 18, 20, 20, 22],
+                            "CAMISA CELESTE": [13, 14, 15, 15, 16],
+                            "CAMISA CUELLO CAMISA": [13, 14, 15, 15, 16],
+                            "LEVA": [45, 50, 50, 50, 50],
+                            "SACO DE LANA": [16, 17, 18, 20, 20],
+                            "CALENTADOR EXTERIOR": [25, 26, 28, 30, 30],
+                            "BUZO": [9, 10, 10, 10, 12],
+                            "PANTALONETA": [8, 8, 8, 8, 8],
+                            "ESCARAPELA": [3, 3, 3, 3, 3],
+                            "CORBATA": [3, 3, 3, 3, 3]
+                        },
+                        "opcionales": {
+                            "MEDIAS DE DIARIO 3 UNI": [3, 3, 3, 3, 3],
+                            "MEDIAS EEFF 3 UNID": [3, 3, 3, 3, 3],
+                            "MALLA": [8, 8, 8, 8, 8]
+                        }
+                    }
+                }
+            },
+            "gustavo": {
+                "name": "Escuela Gustavo Jaramillo",
+                "logo": "escudos/gustavo.PNG",
+                "has_levels": false,
+                "levels": ["Único"],
+                "genders": ["Mujer", "Hombre"],
+                "tables": {
+                    "Único_Mujer": {
+                        "sizes": ["30", "32", "34", "36"],
+                        "items": {
+                            "FALDA": [16, 18, 20, 22],
+                            "SACO": [15, 16, 18, 18],
+                            "JEAN": [15, 16, 17, 18],
+                            "POLO": [8, 8.5, 9, 9.5],
+                            "CALENTADOR": [24, 26, 28, 30],
+                            "CAMISETA": [7, 8, 8, 9],
+                            "SHORT": [5, 6, 7, 7]
+                        },
+                        "opcionales": {
+                            "MEDIAS": [3, 3, 3, 3]
+                        }
+                    },
+                    "Único_Hombre": {
+                        "sizes": ["30", "32", "34", "36"],
+                        "items": {
+                            "CASIMIR": [16, 18, 20, 22],
+                            "SACO": [15, 16, 18, 18],
+                            "JEAN": [15, 16, 17, 18],
+                            "POLO": [8, 8.5, 9, 9.5],
+                            "CALENTADOR": [24, 26, 28, 30],
+                            "CAMISETA": [7, 8, 8, 9],
+                            "SHORT": [5, 6, 7, 7]
+                        },
+                        "opcionales": {
+                            "MEDIAS": [3, 3, 3, 3]
+                        }
+                    }
+                }
+            }
+        };
 
         let currentInstId = null;
         let currentLevel = null;
@@ -855,19 +1042,53 @@
         let wasFullUniform = false;
         
         let cajaData = [];
+        let appSettings = { enablePenalty: true, penaltyAmount: 2 };
+        let isCatalogLoaded = false;
+        let isSettingsLoaded = false;
 
         // Inicialización de Firebase
         const firebaseConfig = {
-            apiKey: "AIzaSyBdnfMWrSjBkqTkWoxb0-MGzWEMQBhUUpw",
-            authDomain: "modas-elsy-app.firebaseapp.com",
-            projectId: "modas-elsy-app",
-            storageBucket: "modas-elsy-app.firebasestorage.app",
-            messagingSenderId: "611681386581",
-            appId: "1:611681386581:web:aa2b09c1282e25698c94dc",
-            measurementId: "G-P85QT5YZ6Q"
+            apiKey: "AIzaSyCBVdG6b1ZURbvh-lFEguCbJtRgE-rjDK8",
+            authDomain: "uniformesescolareselsy.firebaseapp.com",
+            projectId: "uniformesescolareselsy",
+            storageBucket: "uniformesescolareselsy.firebasestorage.app",
+            messagingSenderId: "232394836991",
+            appId: "1:232394836991:web:7a3fd2fa14b3b38bc535ca",
+            measurementId: "G-PLS4MDSN6Y"
         };
         firebase.initializeApp(firebaseConfig);
         const firestore = firebase.firestore();
+
+        // Load DB and Settings
+        firestore.collection('config').doc('settings').onSnapshot((doc) => {
+            if (doc.exists) {
+                appSettings = doc.data();
+            } else {
+                firestore.collection('config').doc('settings').set(appSettings);
+            }
+            const toggle = document.getElementById('admin-penalty-toggle');
+            if (toggle) toggle.checked = appSettings.enablePenalty;
+            
+            isSettingsLoaded = true;
+            checkInitReady();
+        });
+
+        firestore.collection('config').doc('catalog').onSnapshot((doc) => {
+            if (doc.exists) {
+                db = doc.data().db;
+            } else {
+                firestore.collection('config').doc('catalog').set({ db: defaultDb });
+                db = defaultDb;
+            }
+            isCatalogLoaded = true;
+            checkInitReady();
+        });
+
+        function checkInitReady() {
+            if (isCatalogLoaded && isSettingsLoaded) {
+                initMenu();
+            }
+        }
 
         // Escuchar cambios en la base de datos en tiempo real
         firestore.collection('caja').orderBy('datetime', 'desc').onSnapshot((snapshot) => {
@@ -905,11 +1126,22 @@
                 <h3>Caja y Movimientos</h3>
             `;
             grid.appendChild(cajaCard);
+
+            // Agregar la tarjeta de Administrar
+            const adminCard = document.createElement('div');
+            adminCard.className = 'menu-card';
+            adminCard.onclick = () => openAdmin();
+            adminCard.innerHTML = `
+                <div class="icon-lg">⚙️</div>
+                <h3>Administrar</h3>
+            `;
+            grid.appendChild(adminCard);
         }
 
         function showMenu() {
             document.getElementById('detail-view').classList.remove('active');
             document.getElementById('caja-view').classList.remove('active');
+            document.getElementById('admin-view').classList.remove('active');
             document.getElementById('menu-view').classList.add('active');
         }
 
@@ -1161,8 +1393,8 @@
             const isBrokenCombo = (wasFullUniform && !isFullUniform && standardCheckedCount > 0 && missingMajor);
             const isCalentadorSuelto = (hasCalentador && missingMajor);
 
-            if (isBrokenCombo || isCalentadorSuelto) {
-                penalty = 2;
+            if (appSettings.enablePenalty && (isBrokenCombo || isCalentadorSuelto)) {
+                penalty = appSettings.penaltyAmount || 2;
             }
 
             const penaltyRow = document.getElementById('penalty-row');
@@ -1392,7 +1624,204 @@
             }
         }
 
-        window.onload = initMenu;
+        // ============================================
+        // LOGICA DE ADMINISTRACION
+        // ============================================
+        let adminCurrentInst = null;
+        let adminCurrentLevel = null;
+        let adminCurrentGender = null;
+
+        function openAdmin() {
+            document.getElementById('menu-view').classList.remove('active');
+            document.getElementById('admin-view').classList.add('active');
+            
+            const instSelect = document.getElementById('admin-inst-select');
+            instSelect.innerHTML = '';
+            for (const [id, inst] of Object.entries(db)) {
+                const opt = document.createElement('option');
+                opt.value = id;
+                opt.textContent = inst.name;
+                instSelect.appendChild(opt);
+            }
+            if (instSelect.options.length > 0) {
+                adminCurrentInst = instSelect.value;
+                onAdminInstChange();
+            }
+        }
+
+        function onAdminInstChange() {
+            adminCurrentInst = document.getElementById('admin-inst-select').value;
+            const inst = db[adminCurrentInst];
+            
+            const levelSelect = document.getElementById('admin-level-select');
+            levelSelect.innerHTML = '';
+            inst.levels.forEach(lvl => {
+                const opt = document.createElement('option');
+                opt.value = lvl;
+                opt.textContent = lvl;
+                levelSelect.appendChild(opt);
+            });
+            adminCurrentLevel = inst.levels[0];
+
+            const genderSelect = document.getElementById('admin-gender-select');
+            genderSelect.innerHTML = '';
+            inst.genders.forEach(gen => {
+                const opt = document.createElement('option');
+                opt.value = gen;
+                opt.textContent = gen;
+                genderSelect.appendChild(opt);
+            });
+            adminCurrentGender = inst.genders[0];
+
+            renderAdminTable();
+        }
+
+        function onAdminContextChange() {
+            adminCurrentLevel = document.getElementById('admin-level-select').value;
+            adminCurrentGender = document.getElementById('admin-gender-select').value;
+            renderAdminTable();
+        }
+
+        function renderAdminTable() {
+            const tbody = document.getElementById('admin-table-body');
+            const thTallas = document.getElementById('admin-th-tallas');
+            tbody.innerHTML = '';
+            
+            const tableKey = `${adminCurrentLevel}_${adminCurrentGender}`;
+            const inst = db[adminCurrentInst];
+            const tableData = inst.tables[tableKey];
+
+            if (!tableData) {
+                tbody.innerHTML = '<tr><td colspan="7">No hay datos para esta selección</td></tr>';
+                thTallas.textContent = "Tallas";
+                return;
+            }
+
+            thTallas.innerHTML = 'Tallas: ' + tableData.sizes.join(' | ');
+
+            // Normal Items
+            for (const [prenda, precios] of Object.entries(tableData.items || {})) {
+                tbody.appendChild(createAdminRow(prenda, precios, tableData.sizes.length, false));
+            }
+            // Optional Items
+            for (const [prenda, precios] of Object.entries(tableData.opcionales || {})) {
+                tbody.appendChild(createAdminRow(prenda, precios, tableData.sizes.length, true));
+            }
+        }
+
+        function createAdminRow(prendaName, precios, numSizes, isOptional) {
+            const tr = document.createElement('tr');
+            tr.className = 'admin-item-row';
+            
+            const tdPrenda = document.createElement('td');
+            const inputName = document.createElement('input');
+            inputName.type = 'text';
+            inputName.value = prendaName;
+            inputName.className = 'admin-input-name';
+            inputName.style.width = '100%';
+            tdPrenda.appendChild(inputName);
+
+            const tdOpcional = document.createElement('td');
+            tdOpcional.style.textAlign = 'center';
+            const checkOpcional = document.createElement('input');
+            checkOpcional.type = 'checkbox';
+            checkOpcional.checked = isOptional;
+            checkOpcional.className = 'admin-check-optional';
+            tdOpcional.appendChild(checkOpcional);
+
+            const tdPrecios = document.createElement('td');
+            tdPrecios.colSpan = 5;
+            const flexDiv = document.createElement('div');
+            flexDiv.style.display = 'flex';
+            flexDiv.style.gap = '5px';
+            flexDiv.style.flexWrap = 'nowrap';
+            flexDiv.style.overflowX = 'auto';
+            
+            for(let i=0; i<numSizes; i++) {
+                const inputPrice = document.createElement('input');
+                inputPrice.type = 'number';
+                inputPrice.step = '0.01';
+                inputPrice.min = '0';
+                inputPrice.value = precios[i] || 0;
+                inputPrice.style.width = '65px';
+                inputPrice.className = 'admin-input-price';
+                flexDiv.appendChild(inputPrice);
+            }
+            tdPrecios.appendChild(flexDiv);
+
+            const tdAction = document.createElement('td');
+            tdAction.style.textAlign = 'center';
+            const btnDel = document.createElement('button');
+            btnDel.className = 'btn-delete';
+            btnDel.textContent = 'X';
+            btnDel.onclick = () => tr.remove();
+            tdAction.appendChild(btnDel);
+
+            tr.appendChild(tdPrenda);
+            tr.appendChild(tdOpcional);
+            tr.appendChild(tdPrecios);
+            tr.appendChild(tdAction);
+
+            return tr;
+        }
+
+        function addAdminRow() {
+            const tableKey = `${adminCurrentLevel}_${adminCurrentGender}`;
+            const inst = db[adminCurrentInst];
+            const tableData = inst.tables[tableKey];
+            if(!tableData) return;
+            const numSizes = tableData.sizes.length;
+            const emptyPrices = new Array(numSizes).fill(0);
+            const tbody = document.getElementById('admin-table-body');
+            tbody.appendChild(createAdminRow('NUEVA PRENDA', emptyPrices, numSizes, false));
+        }
+
+        function saveAdminData() {
+            const tableKey = `${adminCurrentLevel}_${adminCurrentGender}`;
+            const inst = db[adminCurrentInst];
+            const tableData = inst.tables[tableKey];
+            
+            const newItems = {};
+            const newOptionals = {};
+
+            const rows = document.querySelectorAll('.admin-item-row');
+            rows.forEach(row => {
+                const name = row.querySelector('.admin-input-name').value.trim();
+                if(!name) return; // ignore empty rows
+                
+                const isOptional = row.querySelector('.admin-check-optional').checked;
+                const priceInputs = row.querySelectorAll('.admin-input-price');
+                const prices = Array.from(priceInputs).map(inp => parseFloat(inp.value) || 0);
+
+                if (isOptional) {
+                    newOptionals[name] = prices;
+                } else {
+                    newItems[name] = prices;
+                }
+            });
+
+            tableData.items = newItems;
+            tableData.opcionales = newOptionals;
+
+            firestore.collection('config').doc('catalog').set({ db: db }).then(() => {
+                alert("Catálogo guardado exitosamente en Firebase!");
+            }).catch(e => {
+                console.error(e);
+                alert("Error al guardar el catálogo.");
+            });
+        }
+
+        function saveAdminSettings() {
+            const enablePenalty = document.getElementById('admin-penalty-toggle').checked;
+            appSettings.enablePenalty = enablePenalty;
+            firestore.collection('config').doc('settings').set(appSettings).then(() => {
+                console.log("Configuraciones guardadas.");
+            });
+        }
+
+        window.onload = () => {
+            // Wait for checkInitReady via Firebase onSnapshot
+        };
     </script>
 </body>
 </html>
