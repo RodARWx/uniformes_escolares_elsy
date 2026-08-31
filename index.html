@@ -44,8 +44,8 @@
         }
 
         /* VISTAS */
-        #menu-view, #detail-view, #caja-view, #admin-view { display: none; opacity: 0; transition: opacity 0.4s ease; }
-        #menu-view.active, #detail-view.active, #caja-view.active, #admin-view.active { display: block; opacity: 1; animation: fadeIn 0.5s ease; }
+        #menu-view, #detail-view, #caja-view, #admin-view, #cart-view { display: none; opacity: 0; transition: opacity 0.4s ease; }
+        #menu-view.active, #detail-view.active, #caja-view.active, #admin-view.active, #cart-view.active { display: block; opacity: 1; animation: fadeIn 0.5s ease; }
         
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
@@ -703,6 +703,7 @@
         <div class="header-container">
             <h1>UNIFORMES ESCOLARES ELSY</h1>
             <p class="subtitle">Catálogo Digital y Cotizador de Uniformes</p>
+            <button class="btn-action btn-success" id="btn-view-cart" style="margin: 20px auto 0 auto; display: none;" onclick="openCartView()">🛒 Ver Carrito (0)</button>
         </div>
         <div class="menu-container" id="menu-grid">
             <!-- Renderizado por JS -->
@@ -766,6 +767,34 @@
             </div>
 
             <div id="sale-actions" style="display: none; margin-top: 25px; padding-top: 20px; border-top: 1px dashed var(--border-color); flex-direction: column; gap: 15px; align-items: flex-end;">
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; width: 100%;">
+                    <button class="btn-action btn-outline" style="min-width: 150px; font-weight: 700;" onclick="navigateBack()">Seguir Comprando</button>
+                    <button class="btn-action btn-success" onclick="addToCart()">🛒 Añadir al Carrito</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- VISTA 5: CARRITO -->
+    <div id="cart-view">
+        <div class="top-bar">
+            <button class="btn-back" onclick="navigateBack()">&#8592; Volver</button>
+            <div class="inst-info">
+                <h2 style="margin-left:10px;">🛒 Mi Carrito</h2>
+            </div>
+        </div>
+
+        <div class="caja-form-container">
+            <div id="cart-items-container" style="width: 100%; display: flex; flex-direction: column; gap: 15px;">
+                <!-- Inyectado por JS -->
+            </div>
+            
+            <div class="total-bar" style="width: 100%;">
+                <div class="total-text">Total a Pagar:</div>
+                <div class="total-amount" id="cart-total-price">$0.00</div>
+            </div>
+
+            <div id="cart-checkout-actions" style="margin-top: 25px; padding-top: 20px; border-top: 1px dashed var(--border-color); flex-direction: column; gap: 15px; align-items: flex-end; width: 100%; display: flex;">
                 <div id="vuelto-section" style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; width: 100%; align-items: center; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
                     <label style="font-weight: 600; font-size: 14px; color: var(--text-color);">Recibe:</label>
                     <input type="number" id="cash-received" style="width: 100px; padding: 8px; font-weight: bold;" step="0.50" min="0" placeholder="$0.00" oninput="calculateChange()">
@@ -777,7 +806,7 @@
                         <option value="Efectivo">💵 Efectivo</option>
                         <option value="Transferencia">📱 Transferencia</option>
                     </select>
-                    <button class="btn-action btn-success" onclick="registerSale()">💰 Registrar Venta</button>
+                    <button class="btn-action btn-success" onclick="checkoutCart()">💰 Registrar Venta Global</button>
                 </div>
             </div>
         </div>
@@ -932,6 +961,7 @@
 
     <script>
         let db = {};
+        let shoppingCart = [];
         let defaultDb = {
             "benalcazar": {
                 "name": "Colegio Sebastian de Benalcazar",
@@ -1477,7 +1507,7 @@
         }
 
         function calculateChange() {
-            const totalStr = document.getElementById('total-price').textContent.replace('$', '');
+            const totalStr = document.getElementById('cart-total-price').textContent.replace('$', '');
             const total = parseFloat(totalStr) || 0;
             const receivedStr = document.getElementById('cash-received').value;
             const received = parseFloat(receivedStr);
@@ -1493,7 +1523,7 @@
             }
         }
 
-        function registerSale() {
+        function addToCart() {
             let finalTotalText = document.getElementById('total-price').textContent;
             let finalTotal = parseFloat(finalTotalText.replace('$', ''));
             if (finalTotal <= 0) return;
@@ -1515,28 +1545,24 @@
                 detailLines.push(`- ${penaltyRow.textContent}`);
             }
 
-            const paymentMethodSelect = document.getElementById('sale-payment-method');
-            const method = paymentMethodSelect.options[paymentMethodSelect.selectedIndex].value;
-
-            const now = new Date();
-            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-            
-            const transaction = {
-                type: 'ingreso',
-                paymentMethod: method,
+            shoppingCart.push({
                 detail: detailLines.join('\n'),
-                amount: finalTotal,
-                datetime: now.toISOString().slice(0,16)
-            };
-
-            firestore.collection('caja').add(transaction).then(() => {
-                alert(`✅ Venta registrada exitosamente en caja por $${finalTotal.toFixed(2)}`);
-                deselectAll();
-                goBack();
-            }).catch(error => {
-                console.error("Error al registrar venta: ", error);
-                alert("Hubo un error de conexión al registrar la venta.");
+                amount: finalTotal
             });
+
+            updateCartBadge();
+            deselectAll();
+            showMenu();
+        }
+
+        function updateCartBadge() {
+            const btn = document.getElementById('btn-view-cart');
+            if (shoppingCart.length > 0) {
+                btn.style.display = 'block';
+                btn.textContent = `🛒 Ver Carrito (${shoppingCart.length})`;
+            } else {
+                btn.style.display = 'none';
+            }
         }
 
         // ============================================
@@ -1902,6 +1928,16 @@
             // Wait for checkInitReady via Firebase onSnapshot
         };
     </script>
+    <!-- MODAL CONFIRMACION DE SALIDA -->
+    <div id="exit-confirm-modal" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 350px; background: white; padding: 25px; border-radius: 14px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); z-index: 10000; text-align: center;">
+        <h3 style="margin: 0 0 15px 0; color: var(--danger); font-size: 20px;">⚠️ Salir sin guardar</h3>
+        <p style="font-size: 14px; color: var(--text-color); margin: 0 0 20px 0;">Tienes prendas seleccionadas en esta cotización. Si regresas ahora, perderás la selección.</p>
+        <div style="display: flex; gap: 10px; justify-content: center;">
+            <button class="btn-action btn-outline" style="flex: 1;" onclick="cancelExit()">Cancelar</button>
+            <button class="btn-action" style="flex: 1; background: var(--danger); box-shadow: none;" onclick="confirmExit()">Sí, salir</button>
+        </div>
+    </div>
+
     <!-- MODAL INSTALAR APP -->
     <div id="install-modal" style="display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 400px; background: white; padding: 20px; border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); z-index: 9999; text-align: center; border: 2px solid var(--accent-color);">
         <h3 style="margin: 0 0 10px 0; color: var(--accent-color); font-size: 18px;">📲 Instala esta App</h3>
@@ -1911,29 +1947,160 @@
 
     <!-- SCRIPT HISTORY Y MODAL -->
     <script>
+        let pendingExitAction = null;
+
         // Manejo del botón "Atrás" del celular
         if (!history.state) {
             history.replaceState({ view: 'menu' }, '', '#menu');
         }
 
         window.onpopstate = function(event) {
-            if (event.state && event.state.view) {
-                const view = event.state.view;
-                if (view === 'menu') showMenu(true);
-                else if (view === 'detail') openInstitution(event.state.id, true);
-                else if (view === 'caja') openCaja(true);
-                else if (view === 'admin') openAdmin(true);
-            } else {
-                showMenu(true);
+            if (document.getElementById('detail-view').classList.contains('active')) {
+                const totalText = document.getElementById('total-price').textContent;
+                const total = parseFloat(totalText.replace('$', '')) || 0;
+                if (total > 0) {
+                    history.pushState({ view: 'detail', id: currentInstId }, '', '#cotizador');
+                    pendingExitAction = 'history';
+                    document.getElementById('exit-confirm-modal').style.display = 'block';
+                    return;
+                }
             }
+            handleStateChange(event.state);
         };
 
         function navigateBack() {
+            if (document.getElementById('detail-view').classList.contains('active')) {
+                const totalText = document.getElementById('total-price').textContent;
+                const total = parseFloat(totalText.replace('$', '')) || 0;
+                if (total > 0) {
+                    pendingExitAction = 'button';
+                    document.getElementById('exit-confirm-modal').style.display = 'block';
+                    return;
+                }
+            }
+            
             if (history.length > 1) {
                 history.back();
             } else {
-                showMenu();
+                handleStateChange({ view: 'menu' });
             }
+        }
+
+        function handleStateChange(state) {
+            if (state && state.view) {
+                const view = state.view;
+                if (view === 'menu') showMenu(true);
+                else if (view === 'detail') openInstitution(state.id, true);
+                else if (view === 'caja') openCaja(true);
+                else if (view === 'admin') openAdmin(true);
+                else if (view === 'cart') openCartView(true);
+            } else {
+                showMenu(true);
+            }
+        }
+
+        function cancelExit() {
+            document.getElementById('exit-confirm-modal').style.display = 'none';
+            pendingExitAction = null;
+        }
+
+        function confirmExit() {
+            document.getElementById('exit-confirm-modal').style.display = 'none';
+            deselectAll(); // Clean up current quote
+            
+            if (pendingExitAction === 'history') {
+                history.back(); // Next popstate will pass because total is 0
+            } else if (pendingExitAction === 'button') {
+                if (history.length > 1) history.back();
+                else handleStateChange({ view: 'menu' });
+            }
+            pendingExitAction = null;
+        }
+
+        // ============================================
+        // LOGICA DEL CARRITO
+        // ============================================
+        function openCartView(fromHistory = false) {
+            document.getElementById('menu-view').classList.remove('active');
+            document.getElementById('cart-view').classList.add('active');
+            if (!fromHistory) {
+                history.pushState({ view: 'cart' }, '', '#cart');
+            }
+            renderCart();
+        }
+
+        function renderCart() {
+            const container = document.getElementById('cart-items-container');
+            container.innerHTML = '';
+            let total = 0;
+
+            if (shoppingCart.length === 0) {
+                container.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:16px;">El carrito está vacío.</p>';
+                document.getElementById('cart-checkout-actions').style.display = 'none';
+            } else {
+                shoppingCart.forEach((item, index) => {
+                    total += item.amount;
+                    const el = document.createElement('div');
+                    el.style = 'background: white; padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.05);';
+                    el.innerHTML = `
+                        <div style="white-space: pre-wrap; font-size: 14px; margin-bottom: 10px; padding-right:30px; line-height: 1.5;">${item.detail}</div>
+                        <div style="font-weight: 800; font-size: 16px; color: var(--primary-color);">Total: $${item.amount.toFixed(2)}</div>
+                        <button onclick="removeFromCart(${index})" style="position: absolute; top: 10px; right: 10px; background: none; border: none; color: var(--danger); font-size: 18px; cursor: pointer;">❌</button>
+                    `;
+                    container.appendChild(el);
+                });
+                document.getElementById('cart-checkout-actions').style.display = 'flex';
+            }
+
+            document.getElementById('cart-total-price').textContent = `$${total.toFixed(2)}`;
+            calculateChange();
+        }
+
+        function removeFromCart(index) {
+            shoppingCart.splice(index, 1);
+            updateCartBadge();
+            renderCart();
+        }
+
+        function checkoutCart() {
+            if (shoppingCart.length === 0) return;
+
+            const paymentMethodSelect = document.getElementById('sale-payment-method');
+            const method = paymentMethodSelect.options[paymentMethodSelect.selectedIndex].value;
+
+            let finalTotal = 0;
+            let finalDetailLines = [];
+            
+            shoppingCart.forEach((item, index) => {
+                finalTotal += item.amount;
+                finalDetailLines.push(`=== VENTA #${index+1} ===`);
+                finalDetailLines.push(item.detail);
+                finalDetailLines.push('');
+            });
+
+            const now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            
+            const transaction = {
+                type: 'ingreso',
+                paymentMethod: method,
+                detail: finalDetailLines.join('\n').trim(),
+                amount: finalTotal,
+                datetime: now.toISOString().slice(0,16)
+            };
+
+            firestore.collection('caja').add(transaction).then(() => {
+                alert(`✅ Venta global registrada exitosamente por $${finalTotal.toFixed(2)}`);
+                shoppingCart = [];
+                updateCartBadge();
+                document.getElementById('cash-received').value = '';
+                document.getElementById('cart-view').classList.remove('active');
+                if (history.length > 1) history.back();
+                else showMenu();
+            }).catch(error => {
+                console.error("Error al registrar venta global: ", error);
+                alert("Hubo un error de conexión al registrar la venta.");
+            });
         }
 
         // Modal de instalación
