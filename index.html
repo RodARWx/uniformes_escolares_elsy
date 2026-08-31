@@ -675,6 +675,25 @@
 
             .penalty-row { font-size: 13px; padding: 10px; }
         }
+        
+        @media (max-width: 480px) {
+            h1 { font-size: 24px; }
+            .subtitle { font-size: 14px; }
+            .menu-container { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+            .menu-card { height: 170px; padding: 10px; }
+            .icon-lg { font-size: 40px; }
+            .menu-card img { max-width: 60px; max-height: 60px; }
+            .caja-stats { grid-template-columns: 1fr; }
+            .stat-card { padding: 15px; }
+            .total-amount { font-size: 22px; }
+            .total-text { font-size: 14px; }
+            .top-bar { padding: 10px; gap: 10px; }
+            .btn-action { padding: 12px; font-size: 14px; }
+            
+            /* Admin view inputs */
+            .admin-input-price { width: 55px !important; padding: 8px !important; font-size: 13px !important; }
+            .admin-input-name { font-size: 13px !important; padding: 8px !important; }
+        }
     </style>
 </head>
 <body>
